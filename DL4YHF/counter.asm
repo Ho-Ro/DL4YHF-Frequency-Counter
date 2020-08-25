@@ -29,7 +29,7 @@
 ;**************************************************************************
 
  list P=16F628
- #include <p16f628.inc>        ; processor specific definitions
+ #include <p16F628.inc>        ; processor specific definitions
  #define DEBUG 0         ; DEBUG=1 for simulation, DEBUG=0 for real hardware
 
 ; Selection of LED display control bits... since 2005, three different variants.
@@ -57,9 +57,8 @@
   #define DISP_VARIANT 4
   #define COMMON_ANODE   0
   #define COMMON_CATHODE 1
-  ERROR "Must define DISPLAY_VARIANT_1, .._2, or .._3 under project options"
+  "Error, Must define DISPLAY_VARIANT_1, .._2, or .._3 under project options"
   ; With MPLAB: Project..Build Options..Project..MPASM..Macro Definitions..Add
-  END
 #endif
 #endif
 #endif
@@ -369,10 +368,10 @@ eep_dw  macro value  ; a DOUBLEWORD split into 4 bytes in the PIC's DATA EEPROM
 #define EEPROM_ADR_OPTIONS      0x20  ; EEPROM location for "options" (flags)
 
 ; Initial contents of DATA EEPROM:
- org (0x2100 + 2*EEPROM_ADR_FREQ_OFFSET)
+ org (0x2100+EEPROM_ADR_FREQ_OFFSET)  
     eep_dw   .0        ; [00..03] initial frequency offset = ZERO
 
- org (0x2100 + 2*EEPROM_ADR_STD_IF_TABLE)  ;  standard IF table ...
+ org (0x2100+EEPROM_ADR_STD_IF_TABLE)  ;  standard IF table ...
     eep_dw   .455000   ; [04..07] frequently used in old AM radios 
     eep_dw  .3999000   ; [08..0B] used in "Miss Mosquita" (DK1HE / DL QRP AG)
     eep_dw  .4194304   ; [0C..0F] used in other homebrew amateur radio receivers
@@ -380,7 +379,7 @@ eep_dw  macro value  ; a DOUBLEWORD split into 4 bytes in the PIC's DATA EEPROM
     eep_dw .10700000   ; [14..17] frequently used in old FM radios
                        ; [18..1F] reserved for other "preprogrammed" values
 
- org (0x2100 + 2*EEPROM_ADR_OPTIONS)
+ org (0x2100+EEPROM_ADR_OPTIONS)
     de      .0         ; [20]     "options" (flags), cleared by default
 
 
