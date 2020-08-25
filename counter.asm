@@ -4,6 +4,11 @@
 ; AUTHOR:    Wolfgang Buescher, DL4YHF                                    *
 ;            (based on a work by James Hutchby, MadLab, 1996)             *
 ; REVISIONS: (latest entry first)                                         *
+; 2017-09-10 - Nigel Kendrick (nigel-dot-kendrickatgeemail.com            *
+;              Added option to specify that you are using an external     *
+;              crystal oscillator on OSC1, which frees OSC2/RA6/PB6       *
+;              as an output pin that can then be used to control display  *
+;              digit 5 instead of the diode/transistor NAND gate.         *
 ; 2006-05-31 - Added the 'power-save' option which temporarily puts the   *
 ;              PIC to sleep (with only the watchdog-oscillator running)   *
 ; 2006-05-15 - New entry in the preconfigured frequency table for 4-MHz   *
@@ -28,8 +33,8 @@
 ;            - A PIC16F628 worked up to 63 MHz with this firmware .       *
 ;**************************************************************************
 
- list P=16F628
- #include <p16f628.inc>        ; processor specific definitions
+ list P=16F628A
+ #include <p16f628a.inc> ; processor specific definitions
  #define DEBUG 0         ; DEBUG=1 for simulation, DEBUG=0 for real hardware
 
 ; Selection of LED display control bits... since 2005, three different variants.
@@ -57,14 +62,20 @@
   #define DISP_VARIANT 4
   #define COMMON_ANODE   0
   #define COMMON_CATHODE 1
-  ERROR "Must define DISPLAY_VARIANT_1, .._2, or .._3 under project options"
+  ;"Error, Must define DISPLAY_VARIANT_1, .._2, or .._3 under project options"
   ; With MPLAB: Project..Build Options..Project..MPASM..Macro Definitions..Add
-  END
 #endif
 #endif
 #endif
 
-
+;NK Define EXT_CLOCK to state that you are using an external oscillator on
+;OSC1 pin (16F628 pin 16), so OSC2 pin (15) is not needed and can be used
+;as RA6 to control display digit 5 instead of the transistor/diode NAND gate.
+#ifdef EXT_CLOCK
+  #define EXTERNAL_CLOCK 1
+#else
+  #define EXTERNAL_CLOCK 0
+#endif
 
 ;**************************************************************************
 ;                                                                         *
@@ -131,13 +142,11 @@
 ; If there is no signal at all, a single zero is displayed in the 4th(!) digit.
 ; Overflows are not displayed because they cannot be detected !
 
-
 ;**************************************************************************
 ;                                                                         *
 ; PIC config definitions                                                  *
 ;                                                                         *
 ;**************************************************************************
-
 
 ; '__CONFIG' directive is used to embed configuration data within .asm file.
 ; The lables following the directive are located in the respective .inc file.
@@ -145,22 +154,27 @@
 ; Since 2006-05-28, the watchdog must be ENABLE in the config word
 ;       because of its wakeup-from-sleep function (see 'Sleep100ms') .
 ; EX(16F84:)     __CONFIG   _CP_OFF & _WDT_ON & _PWRTE_ON & _RC_OSC
-#if (DISP_VARIANT==1)  ; display variant 1 : clocked with 4 MHz (low power, "XT" )
-   __CONFIG   _CP_OFF & _WDT_ON & _PWRTE_ON & _XT_OSC & _LVP_OFF & _BODEN_OFF & _MCLRE_OFF
-#else                  ; display variants 2+3 : clocked with 20 MHz (needs "HS" oscillator)
-   __CONFIG   _CP_OFF & _WDT_ON & _PWRTE_ON & _HS_OSC & _LVP_OFF & _BODEN_OFF & _MCLRE_OFF
+
+;NK If using an external clock source, use the _EXTCLK_OSC definition.
+#if (EXTERNAL_CLOCK==0)
+  #if (DISP_VARIANT==1)  ; display variant 1 : clocked with 4 MHz (low power, "XT" )
+     __CONFIG   _CP_OFF & _WDT_ON & _PWRTE_ON & _XT_OSC & _LVP_OFF & _BODEN_OFF & _MCLRE_OFF
+  #else                  ; display variants 2+3 : clocked with 20 MHz (needs "HS" oscillator)
+     __CONFIG   _CP_OFF & _WDT_ON & _PWRTE_ON & _HS_OSC & _LVP_OFF & _BODEN_OFF & _MCLRE_OFF
+  #endif
+#else
+  #if (DISP_VARIANT==1)  ; display variant 1 : clocked with 4 MHz external oscillator module
+     __CONFIG   _CP_OFF & _WDT_ON & _PWRTE_ON & _EXTCLK_OSC & _LVP_OFF & _BODEN_OFF & _MCLRE_OFF
+  #else                  ; display variants 2+3 : clocked with 20 MHz external oscillator module
+     __CONFIG   _CP_OFF & _WDT_ON & _PWRTE_ON & _EXTCLK_OSC & _LVP_OFF & _BODEN_OFF & _MCLRE_OFF
+  #endif
 #endif
-
-
 
 ; '__IDLOCS' directive may be used to set the 4 * 4(?!?) ID Location Bits .
 ; These shall be placed in the HEX file at addresses 0x2000...0x2003 .
    __IDLOCS H'1234'
 
-
 ; (definitions of "file" registers removed.  They are defined in a header file!)
-
-
 
 ;**************************************************************************
 ;                                                                         *
@@ -180,9 +194,6 @@ ENABLE_PORT    equ  PORTA          ; display enable port
 
 #define IOP_PROG_MODE  PORTA,5   ; digital input signal, LOW enters programming mode
   
-
-
-
 ;**************************************************************************
 ;                                                                         *
 ; Constants and timings                                                   *
@@ -212,7 +223,6 @@ TIME      equ  .50
   ; 1/8 second / 50 us =  6250  (ok)
 TIME      equ  .20
 #endif ; variant 1 or 2+3 ?
-
 
 ; Clock cycles per timing loop.  See subroutine count_pulses .
 ;  Usually CYCLES=200 (for 4 MHz crystal,  50 usec - loop)  
@@ -676,6 +686,8 @@ Digit2SevenSeg:
 ; For DISP_VARIANT=3 (COMMON ANODE), the digit-driving pattern is inverted.
 ; Input:   W = 0 means the MOST SIGNIFICANT DIGIT (the leftmost one), etc.
 ; Result:  VALUE to be written to ENABLE_PORT to activate the digit
+;
+; NK Modified to use PA6 (RA6) if an external clock module is being used.
 ;--------------------------------------------------------------------------
 Digit2MuxValue:     ; 
           addwf PCL,f  ; caution: this is 'PCL' only, not 'PC'
@@ -685,25 +697,41 @@ Digit2MuxValue:     ;
           retlw b'11111110'        ; next less significant dig. on  PA0 (!)
           retlw b'11111011'        ; next less significant dig. on  PA2 (!)
           retlw b'11111101'        ; 4th (sometimes the last) digit PA1 (!)
-          retlw b'11111111'        ; 5th (OPTIONAL) least significant digit = NOT (PA3+PA2+PA1+PA0)
+          #if (EXTERNAL_CLOCK==0)
+            retlw b'11111111'      ; 5th (OPTIONAL) least significant digit = NOT (PA3+PA2+PA1+PA0)
+          #else ; We're using an external oscillator so PA6 is used to drive 5th digit
+            retlw b'10111111'      ; 5th (OPTIONAL) least significant digit PA6
+          #endif
 #endif   ; DISPLAY VARIANT #1
+
 #if (DISP_VARIANT==2)  ; muliplexer values for DISPLAY VARIANT #2 (5 digits, COMMON CATHODE) :
           retlw b'11110111'        ; most significant digit is on   PA3 (!)
           retlw b'11111011'        ; next less significant dig. on  PA2 (!!)
           retlw b'11111110'        ; next less significant dig. on  PA0 (!!)
           retlw b'11111101'        ; 4th (sometimes the last) digit PA1 (!)
-          retlw b'11111111'        ; 5th (OPTIONAL) least significant digit = NOT (PA3+PA2+PA1+PA0)
+          #if (EXTERNAL_CLOCK==0)
+            retlw b'11111111'      ; 5th (OPTIONAL) least significant digit = NOT (PA3+PA2+PA1+PA0)
+          #else ; We're using an external oscillator so PA6 is used to drive 5th digit
+            retlw b'10111111'      ;  5th (OPTIONAL) least significant digit PA6
+          #endif
 #endif   ; DISPLAY VARIANT #2
+
 #if (DISP_VARIANT==3)  ; muliplexer values for DISPLAY VARIANT #3 (5 digits, COMMON ANODE) :
-                       ; Unused bits (b7..b4) are left HIGH as above .
-          retlw b'11111000'        ; most significant digit is on   PA3 (!)
-          retlw b'11110100'        ; next less significant dig. on  PA2 (!!)
-          retlw b'11110001'        ; next less significant dig. on  PA0 (!!)
-          retlw b'11110010'        ; 4th (sometimes the last) digit PA1 (!)
-          retlw b'11110000'        ; 5th (OPTIONAL) least significant digit = NOT (PA3+PA2+PA1+PA0)
-#endif   ; DISPLAY VARIANT #2
-
-
+                       ; Modified to cater for when PA6 is driving display digit 5.
+          #if (EXTERNAL_CLOCK==0)
+            retlw b'11111000'      ; most significant digit is on   PA3 (!)
+            retlw b'11110100'      ; next less significant dig. on  PA2 (!!)
+            retlw b'11110001'      ; next less significant dig. on  PA0 (!!)
+            retlw b'11110010'      ; 4th (sometimes the last) digit PA1 (!)
+            retlw b'11110000'      ; 5th (OPTIONAL) least significant digit = NOT (PA3+PA2+PA1+PA0)
+          #else ; We're using an external oscillator so PA6 is used to drive 5th digit
+            retlw b'10111000'      ; most significant digit is on   PA3 (!)
+            retlw b'10110100'      ; next less significant dig. on  PA2 (!!)
+            retlw b'10110001'      ; next less significant dig. on  PA0 (!!)
+            retlw b'10110010'      ; 4th (sometimes the last) digit PA1 (!)
+            retlw b'11110000'      ; 5th (OPTIONAL) least significant digit PA6
+          #endif
+#endif   ; DISPLAY VARIANT #3
 
 ;--------------------------------------------------------------------------
 ; Powers-of-ten table (32 bits, most significant byte first)
