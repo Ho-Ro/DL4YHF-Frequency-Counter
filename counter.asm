@@ -42,7 +42,7 @@
 ;  DISP_VARIANT=1  :   first prototype, PIC on left side of display
 ;  DISP_VARIANT=2  :   second prototype, separated PIC and display board
 ;  DISP_VARIANT=3  :   similar as (2), but for COMMON CATHODE display
-; Unfortunately it seems impossible to assign a NUMERIC VALUE to a macro 
+; Unfortunately it seems impossible to assign a NUMERIC VALUE to a macro
 ;   in MPLAB (not in MPASM!) ....
 #ifdef DISPLAY_VARIANT_1
   #define DISP_VARIANT 1    ; very first (old) prototype by DL4YHF
@@ -87,7 +87,7 @@
 ; if the oscillator crystal is properly trimmed .
 
 ; Signal pulses are counted over a fixed time interval of 1/4 second to
-; 1 second (gate time). High frequency pulses are counted over 1/4 s 
+; 1 second (gate time). High frequency pulses are counted over 1/4 s
 ; to make the meter more responsive with no loss of displayed accuracy.
 
 ; Pulses are counted using Timer 0 of the PIC,
@@ -114,8 +114,8 @@
 ; suppressed and the 4 (or 5) significant digits are converted to LED data
 ; for the 7-segment displays using a lookup table.
 
-; The signal frequency is displayed on four (or five) 7-segment displays. 
-; The displays are multiplexed which means that only one display is enabled 
+; The signal frequency is displayed on four (or five) 7-segment displays.
+; The displays are multiplexed which means that only one display is enabled
 ; at any one time. The variable 'disp_index' contains the index of the currently
 ; enabled display. Each display is enabled in turn at a sufficient frequency
 ; that no flicker is discernable. A prescaler ('disp_timer') is used
@@ -192,7 +192,7 @@ ENABLE_PORT    equ  PORTA          ; display enable port
 
 
 #define IOP_PROG_MODE  PORTA,5   ; digital input signal, LOW enters programming mode
-  
+
 ;**************************************************************************
 ;                                                                         *
 ; Constants and timings                                                   *
@@ -208,14 +208,14 @@ CLOCK     equ  .20000000
 
 ; microseconds per timing loop
 #if (DISP_VARIANT==1)  ; display variant 1 : clocked with 4 MHz
-  ; 20 microseconds is impossible with 4-MHz-Crystal, so use 50 us instead ! 
+  ; 20 microseconds is impossible with 4-MHz-Crystal, so use 50 us instead !
   ; Make sure all gate times can be divided by this interval without remainder :
   ; 1   second / 50 us = 20000  (ok)
   ; 1/4 second / 50 us =  5000  (ok)
   ; 1/8 second / 50 us =  2500  (ok)
 TIME      equ  .50
 #else                  ; display variants 2+3 : clocked with 20 MHz
-  ; 20 microseconds is impossible with 4-MHz-Crystal, so use 50 us instead ! 
+  ; 20 microseconds is impossible with 4-MHz-Crystal, so use 50 us instead !
   ; Make sure all gate times can be divided by this interval without remainder :
   ; 1   second / 20 us = 50000  (ok)
   ; 1/4 second / 20 us = 12500  (ok)
@@ -224,7 +224,7 @@ TIME      equ  .20
 #endif ; variant 1 or 2+3 ?
 
 ; Clock cycles per timing loop.  See subroutine count_pulses .
-;  Usually CYCLES=200 (for 4 MHz crystal,  50 usec - loop)  
+;  Usually CYCLES=200 (for 4 MHz crystal,  50 usec - loop)
 ;              or 400 (for 20 MHz crystal, 20 usec - loop)
 CYCLES    equ  TIME*CLOCK/.1000000
 
@@ -297,23 +297,23 @@ timer0_old     equ  0x2C      ; previous reading from timer0 register
 gatecnt_hi     equ  0x2D      ; 16-bit counter (msb first)
 gatecnt_lo     equ  0x2E      ; 16-bit counter (lsb last)
 
-bTemp          equ  0x2F      ; temporary 8-bit register, 
+bTemp          equ  0x2F      ; temporary 8-bit register,
                               ; may be overwritten in ALL subroutines
 
 freq           equ  0x30      ; frequency in binary (32 bits)....
-freq_hi        equ  0x30      ; same location, begins with HIGH byte 
+freq_hi        equ  0x30      ; same location, begins with HIGH byte
 freq_mh        equ  0x31      ; ... medium high byte
 freq_ml        equ  0x32      ; ... medium low byte
 freq_lo        equ  0x33      ; ... low byte
 
 freq2          equ  0x34      ; frequency too, copied for programming mode
-freq2_hi       equ  0x34      ; same location, begins with HIGH byte 
+freq2_hi       equ  0x34      ; same location, begins with HIGH byte
 freq2_mh       equ  0x35      ; ... medium high byte
 freq2_ml       equ  0x36      ; ... medium low byte
 freq2_lo       equ  0x37      ; ... low byte
 
 foffs          equ  0x38      ; frequency too, copied for programming mode
-foffs_hi       equ  0x38      ; same location, begins with HIGH byte 
+foffs_hi       equ  0x38      ; same location, begins with HIGH byte
 foffs_mh       equ  0x39      ; ... medium high byte
 foffs_ml       equ  0x3A      ; ... medium low byte
 foffs_lo       equ  0x3B      ; ... low byte
@@ -326,7 +326,7 @@ digits         equ  0x40      ; frequency as decimal digits (8 bytes)...
 digit_0        equ  0x40      ; same location as MOST SIGNIFICANT digit, 10-MHz
 digit_1        equ  0x41      ; usually the 1-MHz-digit
 digit_2        equ  0x42      ; usually the 100-kHz-digit
-digit_3        equ  0x43      ; usually the 10-kHz-digit 
+digit_3        equ  0x43      ; usually the 10-kHz-digit
 digit_4        equ  0x44      ; usually the 1-kHz-digit
 digit_5        equ  0x45      ; usually the 100-Hz-digit
 digit_6        equ  0x46      ; usually the 10-Hz-digit
@@ -370,7 +370,7 @@ eep_dw  macro value  ; a DOUBLEWORD split into 4 bytes in the PIC's DATA EEPROM
 ; EEPROM memory  definitions                                              *
 ;                                                                         *
 ;**************************************************************************
-  
+
   ;     for PIC16F84:   0x00..0x3F were valid EEPROM locations (64 byte)
   ;     for PIC16F628:  0x00..0x7F are valid EEPROM locations (128 byte)
 #define EEPROM_ADR_FREQ_OFFSET  0x00  ; EEPROM location for frequency offset
@@ -382,7 +382,7 @@ eep_dw  macro value  ; a DOUBLEWORD split into 4 bytes in the PIC's DATA EEPROM
     eep_dw   .0        ; [00..03] initial frequency offset = ZERO
 
  org (0x2100 + 2*EEPROM_ADR_STD_IF_TABLE)  ;  standard IF table ...
-    eep_dw   .455000   ; [04..07] frequently used in old AM radios 
+    eep_dw   .455000   ; [04..07] frequently used in old AM radios
     eep_dw  .3999000   ; [08..0B] used in "Miss Mosquita" (DK1HE / DL QRP AG)
     eep_dw  .4194304   ; [0C..0F] used in other homebrew amateur radio receivers
     eep_dw  .4433619   ; [10..13] sometimes  used in homebrew amateur radio receivers
@@ -402,8 +402,8 @@ eep_dw  macro value  ; a DOUBLEWORD split into 4 bytes in the PIC's DATA EEPROM
 
 ;--------------------------------------------------------------------------
 ; macros to implement lookup tables - these macros hide the PIC syntax
-; used and make the source code more readable 
-;   (YHF: CAUTION - BUT THESE MACROS HIDE SOME VERY NASTY PITFALLS . 
+; used and make the source code more readable
+;   (YHF: CAUTION - BUT THESE MACROS HIDE SOME VERY NASTY PITFALLS .
 ;         TABLE MUST NOT CROSS PAGE BORDER DUE TO 'ADDWF PCL, f' ! )
 ;--------------------------------------------------------------------------
 
@@ -483,7 +483,7 @@ add32     macro op1,op2                 ; op1 := op1 + op2
           movfw op2+1                   ; add middle-high byte (bits 23...16)
           addcwf op1+1
 
-          movfw op2+0                   ; add high byte       (bits 31...24) 
+          movfw op2+0                   ; add high byte       (bits 31...24)
           addcwf op1+0
 
           endm
@@ -497,7 +497,7 @@ add32     macro op1,op2                 ; op1 := op1 + op2
 
 sub32     macro op1,op2                 ; op1 := op1 - op2
 
-          movfw op2+3                   ; subtract low byte 
+          movfw op2+3                   ; subtract low byte
           subwf op1+3 , f
 
           movfw op2+2                   ; subtract middle low byte
@@ -518,10 +518,10 @@ sub32     macro op1,op2                 ; op1 := op1 - op2
 
 neg32  macro op                      ; op1 := 0 - op2
        local neg_done
-           comf  op,   f             ; invert all 8 bits in high byte  
-           comf  op+1, f             ; invert all 8 bits in middle high byte  
-           comf  op+2, f             ; invert all 8 bits in middle low byte  
-           comf  op+3, f             ; invert all 8 bits in low byte  
+           comf  op,   f             ; invert all 8 bits in high byte
+           comf  op+1, f             ; invert all 8 bits in middle high byte
+           comf  op+2, f             ; invert all 8 bits in middle low byte
+           comf  op+3, f             ; invert all 8 bits in low byte
            ; Note at this point 0x000000 would have turned into 0xFFFFFFF .
            ; Must add ONE to complete the TWO's COMPLIMENT calculation ( -0  = 0 ).
            ; Note that "incf" affects only the Z flag but not the C flag .
@@ -562,11 +562,11 @@ CHAR_A    equ  .10                 ; Letters A..F = HEX digits, index 10..15
 CHAR_b    equ  .11                 ;
 CHAR_c    equ  .12                 ;
 CHAR_d    equ  .13                 ;
-CHAR_E    equ  .14                 ; 
-CHAR_F    equ  .15                 ; 
-CHAR_G    equ  .16                 ; Other letters used in "programming" mode 
-CHAR_H    equ  .17                 ; 
-CHAR_i    equ  .18                 ; 
+CHAR_E    equ  .14                 ;
+CHAR_F    equ  .15                 ;
+CHAR_G    equ  .16                 ; Other letters used in "programming" mode
+CHAR_H    equ  .17                 ;
+CHAR_i    equ  .18                 ;
 
 BLANK     equ  .19                 ; blank display
 TEST      equ  .20                 ; power-on display test
@@ -577,7 +577,7 @@ CHAR_o    equ  .23                 ;   "Prog"
 CHAR_Q    equ  .24                 ;   "Quit"
 CHAR_u    equ  .25                 ;
 CHAR_t    equ  .26                 ;
-CHAR_S    equ  .27                 ;   "Sub"   
+CHAR_S    equ  .27                 ;   "Sub"
 CHAR_Z    equ  .28                 ;   "ZEro"
 CHAR_I    equ  .29                 ;   large "I" (left aligned!) for "IF"
 CHAR_J    equ  .30                 ;
@@ -588,7 +588,7 @@ CHAR_V    equ  .34                 ;
 CHAR_EQ   equ  .35                 ;   "="
 
 
-#if (DISP_VARIANT==1) 
+#if (DISP_VARIANT==1)
 DPPOINT_BIT equ  4   ; decimal point bit (same for all digits)
 #define _A  0x01     ; bitmask for segment A , etc ..
 #define _B  0x02
@@ -619,7 +619,7 @@ BLANK_PATTERN equ b'00000000'      ; blank display pattern (7-segment code)
 ;  Table to convert a decimal digit or a special character into 7-segment-code
 ;   Note: In DL4YHF's PIC counter, all digits have the same segment connections,
 ;         so we do not need individual conversion tables for all segments.
-;        
+;
 ;  AAAA
 ; F    B
 ; F    B
@@ -688,7 +688,7 @@ Digit2SevenSeg:
 ;
 ; NK Modified to use PA6 (RA6) if an external clock module is being used.
 ;--------------------------------------------------------------------------
-Digit2MuxValue:     ; 
+Digit2MuxValue:     ;
           addwf PCL,f  ; caution: this is 'PCL' only, not 'PC'
           ; Note: If the program counter is affected, a command requires to instruction cycles (=8 osc cycles)
 #if (DISP_VARIANT==1)  ; muliplexer values for DISPLAY VARIANT #1 :
@@ -737,7 +737,7 @@ Digit2MuxValue:     ;
 ;   Based on an idea by James Hutchby (MadLab, 1996) .
 ;   Modified for 32-bit arithmetic by Wolfgang Buescher (2004).
 ;--------------------------------------------------------------------------
-TensTable  addwf PCL,f  
+TensTable  addwf PCL,f
            cquad   .10000000  ; 10 million is sufficient for the counter itself
            cquad   .1000000
            cquad   .100000
@@ -838,7 +838,7 @@ PSC_DIV_BY_128 equ  b'00100110'   ; let prescaler divide TMR0 by 128
 PSC_DIV_BY_256 equ  b'00100111'   ; let prescaler divide TMR0 by 256
 
 SetPrescaler:  ; copy W into OPTION register, avoid watchdog trouble
-          clrwdt     ; recommended by Microchip ("switching prescaler assignment") 
+          clrwdt     ; recommended by Microchip ("switching prescaler assignment")
           errorlevel -302 ; Turn off banking message for the next few instructions..
           bsf   STATUS, RP0            ;! setting RP0 enables access to OPTION reg
                ; option register is in bank1. i know. thanks for the warning.
@@ -848,7 +848,7 @@ SetPrescaler:  ; copy W into OPTION register, avoid watchdog trouble
           retlw 0
 
 
-PrescalerOff:  ; turn the prescaler for TMR0 "off" 
+PrescalerOff:  ; turn the prescaler for TMR0 "off"
                ; (actually done by assigning the prescaler to the watchdog timer)
           clrwdt                        ; clear watchdog timer
           clrf  TMR0                    ; clear timer 0 AND PRESCALER(!)
@@ -870,9 +870,9 @@ PrescalerOff:  ; turn the prescaler for TMR0 "off"
 ; Power-saving subroutine: Puts the PIC to sleep for ROUGHLY 100 milliseconds .
 ;  - crystal oscillator turned OFF during this phase
 ;  - only the internal RC-oscillator for the watchdog keeps running
-;  - expiration of watchdog during sleep does NOT reset the PIC, 
-;    only wakes it up again so normal operation may resume 
-;  - LED display will be off during this time 
+;  - expiration of watchdog during sleep does NOT reset the PIC,
+;    only wakes it up again so normal operation may resume
+;  - LED display will be off during this time
 ;--------------------------------------------------------------------------
 Sleep150ms:  ; go to sleep for approx. 150 milliseconds, and then RETURN (no reset)
    ; Details on the PIC's watchdog timer (from PIC16F628 datasheet) :
@@ -880,15 +880,15 @@ Sleep150ms:  ; go to sleep for approx. 150 milliseconds, and then RETURN (no res
    ; > no prescaler). The timeout periods vary with temperature,
    ; > VDD and process variations from part to part (see
    ; > DC specs).
-   ; > The Watchdog Timer is a free running on-chip RC oscillator which does 
-   ; > not require any external components. This RC oscillator is separate 
-   ; > from the ER oscillator of the CLKIN pin. That means that the WDT will run, 
-   ; > even if the clock on the OSC1 and OSC2 pins of the device has been stopped, 
-   ; > for example, by execution of a SLEEP instruction. 
+   ; > The Watchdog Timer is a free running on-chip RC oscillator which does
+   ; > not require any external components. This RC oscillator is separate
+   ; > from the ER oscillator of the CLKIN pin. That means that the WDT will run,
+   ; > even if the clock on the OSC1 and OSC2 pins of the device has been stopped,
+   ; > for example, by execution of a SLEEP instruction.
    ; > During normal operation, a WDT timeout generates a device RESET.
-   ; > If the device is in SLEEP mode, a WDT timeout causes the device to wake-up 
+   ; > If the device is in SLEEP mode, a WDT timeout causes the device to wake-up
    ; > and continue with normal operation.
-   ; > The WDT can be permanently disabled by programming the configuration bit 
+   ; > The WDT can be permanently disabled by programming the configuration bit
    ; > WDTE as clear .
    ; In other words, to use the watchdog-timer for "temporary sleep" here ,
    ; it must be ENABLED in the configuration word when programming the PIC.
@@ -897,11 +897,11 @@ Sleep150ms:  ; go to sleep for approx. 150 milliseconds, and then RETURN (no res
    ; it will reset the PIC during normal operation !
    ; Here (in the frequency counter), the prescaler remains assigned to timer0
    ; so the watchdog interval is ~ 18 milliseconds (+/-, RC-oscillator) .
-   ; > The CLRWDT and SLEEP instructions clear the WDT and the postscaler, 
+   ; > The CLRWDT and SLEEP instructions clear the WDT and the postscaler,
    ; > if assigned to the WDT, and prevent it from timing out and generating
    ; >  a device RESET. The TO bit in the STATUS register will be cleared upon
    ; > a Watchdog Timer timeout.
-#if(COMMON_CATHODE)  ; display with COMMON CATHODE : 
+#if(COMMON_CATHODE)  ; display with COMMON CATHODE :
           movlw 0x00                    ; segment drivers LOW to turn off
 #else  ; not COMMON CATHODE but COMMON ANODE:
           movlw 0xFF                    ; segment drivers HIGH to turn off
@@ -923,11 +923,11 @@ Sleep150ms:  ; go to sleep for approx. 150 milliseconds, and then RETURN (no res
           sleep                         ; sleep for approx 18 ms (one watchdog interval)
           ; The SLEEP command clears the Watchdog Timer and stops the main oscillator.
           ; Only the internal watchdog timer keeps running.
-          ; The WDT is is also cleared when the device wakes-up from SLEEP, 
+          ; The WDT is is also cleared when the device wakes-up from SLEEP,
           ; regardless of the source of wake-up, so no need for 'clrwdt' here !
           nop    ; arrived here, slept for ~ 8 times 18 milliseconds
           return ; end  Sleep150ms
-              
+
 
 
 
@@ -995,8 +995,8 @@ ClearDisplay:
         ; EEDATA and EEADR must have been set before calling this subroutine
         ; (optimized for the keyer-state-machine).
         ; CAUTION : What the lousy datasheet DS40300B wont tell you:
-        ;           The example given there for the 16F628 is WRONG ! 
-        ;           All EEPROM regs are in BANK1 for the 16F628. 
+        ;           The example given there for the 16F628 is WRONG !
+        ;           All EEPROM regs are in BANK1 for the 16F628.
         ;           In the PIC16F84, some were in BANK0 others in BANK1..
         ; In the PIC16F628, things are much different... all EEPROM regs are in BANK1 !
 SaveInEEPROM:    ; save "INDF" = *FSR   in EEPROM[<w>]
@@ -1037,7 +1037,7 @@ SaveEW:  btfsc   EECON1, WR          ;!; WR is cleared after completion of write
 ;     INDF = *FSR  returns the read byte
 ;--------------------------------------------------------------------------
         ; Caution: EEDATA and EEADR have been moved from Bank0(16F84) to Bank1(16F628)
-        ;          and the example from the datasheet telling you to switch to 
+        ;          and the example from the datasheet telling you to switch to
         ;          bank0 to access EEDATA is rubbish (DS40300B page 93 example 13-1).
 EEPROM_ReadByte:    ; read ONE byte from the PIC's data EEPROM
         movwf   bTemp       ; save W
@@ -1067,10 +1067,10 @@ EEPROM_Read4Byte: ; read FOUR bytes from the PIC's data EEPROM.
         call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 23..16)
         addlw   1               ; next source address
         incf    FSR , f         ; next destination address
-        call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 15..8) 
+        call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 15..8)
         addlw   1               ; next source address
         incf    FSR , f         ; next destination address
-        goto    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits  7..0) 
+        goto    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits  7..0)
  ; end EEPROM_Read4Byte
 
 
@@ -1087,7 +1087,7 @@ count_pulses:
           clrf freq_hi                  ; clear pulse counter (bits 31..24)
           clrf freq_mh                  ; bits 23..16
           clrf freq_ml                  ; bits 16..8
-          clrf freq_lo                  ; bits  7..0 
+          clrf freq_lo                  ; bits  7..0
 
           clrf timer0_old               ; 'old' value of timer0 to detect toggling MSB
           clrf TMR0                     ; timer register (PIC's hardware timer, 8 bit)
@@ -1099,14 +1099,14 @@ count_pulses:
 ; --------------- start of critial timing loop >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ; The following timing loop must take a well-defined time in total per
-; iteration, usually 50 (or 20) microseconds, which can be precisely achieved 
+; iteration, usually 50 (or 20) microseconds, which can be precisely achieved
 ; with a 4-MHz-crystal (or 20 MHz for variant 2+3) .
 ; This gives a basic delay for the frequency counter's gate time .
 ;    The frequency at the input of TIMER 0 (not the prescaler)
-;    can not exceed f_crystal / 4,  
+;    can not exceed f_crystal / 4,
 ;    and every HIGH->LOW transition of bit7 in TIMER0 must be polled here.
 ;  This is safe because ..
-;    Variant 1:  With a 4-MHz-crystal, Timer0 can count up to 1 MHz input, 
+;    Variant 1:  With a 4-MHz-crystal, Timer0 can count up to 1 MHz input,
 ;                MSB toggles every (128/1MHz) = 128 us, polled every 50us  -> ok.
 ;    Variant 2:  With a 20-MHz-crystal, Timer0 can count up to 4 (not 5?!) MHz input,
 ;                MSB toggles every (128/4MHz) = 32 us, polled every 20us -> ok.
@@ -1127,7 +1127,7 @@ count1    movfw disp_index              ; [1] get the current digit number (disp
           movfw bTemp                   ; [14] get the mupliplexer pattern (hurry, hurry !)
           movwf ENABLE_PORT             ; [15] set the LED multiplexer
 
-          incf  disp_timer,f            ; [16] increment display-multiplex timer 
+          incf  disp_timer,f            ; [16] increment display-multiplex timer
           btfsc disp_timer,6            ; [17] (6-bit prescaler)
           incf  disp_index,f            ; [18] next display if rolled over
           bcf   disp_timer,6            ; [19] limit disp_timer to 6 bits (!)
@@ -1140,26 +1140,26 @@ count1    movfw disp_index              ; [1] get the current digit number (disp
 ; cycles to execute, irrespective of whether the skips take place or not .
 ; Here still in 'count_pulses'.
 
-          movfw TMR0                    ; [24] read least significant byte of 
+          movfw TMR0                    ; [24] read least significant byte of
           movwf freq_lo                 ; [25]  pulse counter (bits 7..0)
 
           movlw 1                       ; [26] determine if timer 0 has rolled
-          btfss timer0_old,7            ; [27] over (rolled over if msb was 
-          clrw                          ; [28] previously set and now isn't) 
+          btfss timer0_old,7            ; [27] over (rolled over if msb was
+          clrw                          ; [28] previously set and now isn't)
           btfsc freq_lo,7               ; [29]
           clrw                          ; [30]
 
           addwf freq_ml,f               ; [31] increment high bytes of pulse counter
-          skpnc                         ; [32] if low byte rolled over 
+          skpnc                         ; [32] if low byte rolled over
           incf freq_mh,f                ; [33] (mh = "medium high byte" of counter)
                                         ; NOTE: we are not modifying freq_hi here !
                                         ;       Bits 31..24 may be used later when multiplying with some factor
                                         ;       (2^n) to compensate for the ASYNCHRON PRESCALER !
 
-          btfsc freq_mh,7               ; [34] overflow (freq > 7fffffh) ? 
+          btfsc freq_mh,7               ; [34] overflow (freq > 7fffffh) ?
           goto  count3                  ; [35] branch if yes
 
-          movfw freq_lo                 ; [36] save previous value from timer 0 
+          movfw freq_lo                 ; [36] save previous value from timer 0
           movwf timer0_old              ; [37]
 
           tstf gatecnt_lo               ; [38] check inner gate-time counter, LOW byte
@@ -1171,14 +1171,14 @@ count1    movfw disp_index              ; [1] get the current digit number (disp
           ; Got some instruction cycles left ? Insert a few NOPs to bring to total loop time to 50us.
           clrwdt                        ; [42] (ex: nop, but since 2006-05-28 the dog must be fed !)
           nop                           ; [43]
-          nop                           ; [44] 
+          nop                           ; [44]
           nop                           ; [45]  ugh, what a waste of precious CPU power ;-)
 
-          movfw gatecnt_hi              ; [46] counter = 0 ? 
+          movfw gatecnt_hi              ; [46] counter = 0 ?
           iorwf gatecnt_lo,w            ; [47]
           skpz                          ; [48]
           goto count1                   ; [49,50]  goto always takes TWO instruction cycles
-#else   ; For VARIANTS 2+3 : 100 instruction cycles per loop  
+#else   ; For VARIANTS 2+3 : 100 instruction cycles per loop
         ; (f_xtal=20 MHz, t_loop=20us, t_instr=4/20MHz=0.2us)
         ; Some time may be used for a nice software-based PULSE WIDTH MODULATION
         ; of the display intensity ... or other goodies/gimmicks one fine day !
@@ -1191,9 +1191,9 @@ WasteT1:  addlw 0xFF                    ; [44,   48, .. ]
           nop                           ; [91]
           nop                           ; [92]
           nop                           ; [93]
-          nop                           ; [94] 
+          nop                           ; [94]
           nop                           ; [95]
-          movfw gatecnt_hi              ; [96] counter = 0 ? 
+          movfw gatecnt_hi              ; [96] counter = 0 ?
           iorwf gatecnt_lo,w            ; [97]
           skpz                          ; [98]
           goto count1                   ; [99,50]  goto always takes TWO instruction cycles
@@ -1222,7 +1222,7 @@ count3    retlw 0
 
 ;--------------------------------------------------------------------------
 ; Convert *FSR (32 bit) into BCD and show it on the display .
-;  Input :  INDF = *FSR, 32-bit integer.  
+;  Input :  INDF = *FSR, 32-bit integer.
 ;  Bad side effect : CONTENTS OF <freq> will be lost !!
 ;--------------------------------------------------------------------------
 ShowInt32_FSR   ; Convert <*FSR> (32 bit integer) to 8 BCD-digits ...
@@ -1235,7 +1235,7 @@ ShowInt32_FSR   ; Convert <*FSR> (32 bit integer) to 8 BCD-digits ...
           movfw  INDF        ; W   := *FSR   , load MIDDLE HIGH byte
           incf   FSR , f     ; FSR := FSR + 1
           movwf  freq+2      ; freq.ml := W
-          movfw  INDF        ; W   := *FSR   , load HIGH byte 
+          movfw  INDF        ; W   := *FSR   , load HIGH byte
           incf   FSR , f     ; FSR := FSR + 1
           movwf  freq+3      ; freq.lo := W
           ; continue with CvtAndDisplayFreq !
@@ -1278,8 +1278,8 @@ conv1     ; Loop for ALL POWERS OF TEN in the lookup table..
 conv2     ; Loop to repeatedly subtract divi from freq (32-bit subtract)
           ;         until underflow while incrementing the decimal digit.
           sub32 freq,divi               ; freq := freq - divi  (with divi = 10 power N)
-          bnc conv3                     ; 
-          incf INDF , f                 ;    The RESULT will be written back to freq, 
+          bnc conv3                     ;
+          incf INDF , f                 ;    The RESULT will be written back to freq,
           goto conv2                    ;    in other words 'freq' will be lost !
 
 conv3     add32 freq,divi               ; freq := freq+divi;  ready for next digit
@@ -1306,10 +1306,10 @@ display_freq:
 ;      If it means MHz, it is on permanently.
 ;      24 bit unsigned integer could count up to 16777216 (16 mio, slightly over 7 digits)
 ;      which was not enough for a 50 MHz counter, so switched to 32-bit arithmetic .
-;      
+;
 
     ; Display routine for frequencies up to "99.99 MHz" (theoretical):
-          ; (do NOT insert the decimal point yet, 
+          ; (do NOT insert the decimal point yet,
           ;   it would disturb the blanking of LEADING zeroes )
           movlw digits                  ; find the first significant digit..
           movwf FSR                     ; .. by stepping over leading zeroes
@@ -1324,7 +1324,7 @@ display_freq:
           incf  FSR  ,  f               ; otherwise skip 3rd digit (the 100-kHz place)
           tstf  INDF
           bnz   displ_kHz               ; 10-kHz-digit non-zero, show frequency in kHz  (XX.XX)
-          incf  FSR  ,  f               ; Otherwise show digits 5,6,7,8 (there are EIGHT digits) 
+          incf  FSR  ,  f               ; Otherwise show digits 5,6,7,8 (there are EIGHT digits)
                                         ; show all these frequencies with flashing kHz-point (X.XXX)
 
 displ_kHz:   ; insert a BLINKING POINT to indicate the kilohertz-digit
@@ -1334,7 +1334,7 @@ displ_kHz:   ; insert a BLINKING POINT to indicate the kilohertz-digit
 
 displ_MHz:   ; insert a BLINKING POINT to indicate the kilohertz-digit
           bsf   digit_1, 7  ; set the decimal point indicating the frequency in MHz .
-         
+
 
 display:  ; Show the FIVE digits beginning at INDF = *(FSR) on the LED display...
           movfw  INDF                   ; convert the four digits to
@@ -1373,7 +1373,7 @@ MainInit:
           movlw PORT_A_IO               ; initialise port A
           errorlevel -302 ; Turn off banking message for the next few instructions..
           bsf   STATUS, RP0            ;! setting RP0 enables access to TRIS regs
-          movwf PORTA                  ;! looks like PORTA but is in fact TRISA 
+          movwf PORTA                  ;! looks like PORTA but is in fact TRISA
           bcf   STATUS, RP0            ;! clearing RP0 enables access to PORTs
           clrf PORTA
 
@@ -1427,7 +1427,7 @@ MainRestart:  ; Here we "restart" the counter after exiting from programming mod
           movlw  EEPROM_ADR_OPTIONS       ; load EEPROM-internal offset of "options"-byte
           call   EEPROM_ReadByte          ; read single byte from EEPROM: options := EEEPROM[W]
 #if(DEBUG==1)
-          bsf    OPT_PWRSAVE ; enable power-save mode for debugger/simulator   
+          bsf    OPT_PWRSAVE ; enable power-save mode for debugger/simulator
 #endif ; DEBUG
 
           ; Blank the display until 1st measurement is available :
@@ -1444,13 +1444,13 @@ MainLoop:
           ; ex: tris  PORTA;   tris  PORTB
           errorlevel -302 ; Turn off banking message for the next few instructions..
           bsf   STATUS, RP0            ;! setting RP0 enables access to TRIS regs
-          movlw PORT_A_IO              ;! 
-          movwf PORTA                  ;! looks like PORTA but is in fact TRISA 
+          movlw PORT_A_IO              ;!
+          movwf PORTA                  ;! looks like PORTA but is in fact TRISA
           movlw PORT_B_IO              ;!
           movwf PORTB                  ;! looks like PORTB but is in fact TRISB
           bcf   STATUS, RP0            ;! clearing RP0 enables access to PORTs
           clrwdt                        ; configure TMR0... but clear watchdog timer first
-          movlw b'100000'               ; value for OPTION reg: edge - low-to-high transition, 
+          movlw b'100000'               ; value for OPTION reg: edge - low-to-high transition,
                                         ;  + prescaler assigned to Timer 0, 1:2
           bsf   STATUS, RP0            ;! setting RP0 enables access to OPTION reg
                ; option register is in bank1. i know. thanks for the warning.
@@ -1460,8 +1460,8 @@ MainLoop:
 
           ; First do a 'range-detection measurement' to find
           ; a suitable prescaler ratio. Worst-case-estimation:
-          ; 50 MHz at the input of the async TIMER 0 prescaler 
-          ; requires a prescaler ratio of 64 because 
+          ; 50 MHz at the input of the async TIMER 0 prescaler
+          ; requires a prescaler ratio of 64 because
           ; the synchron counter in TIMER 0 accepts a maximum
           ; frequency of f_osc / 4, here: max. 1 MHz.
           ; The theoretic maximum frequency is 64 MHz then, which
@@ -1469,7 +1469,7 @@ MainLoop:
           ; The range-detection interval is somewhere near 1/30 seconds (see RANGE_DET_LOOPS),
           ; so frequencies below 30*64 = 1920 Hz are not detectable at this step.
 RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect the MEASURING RANGE
-                                        ; (which is required to find a good prescaler value) 
+                                        ; (which is required to find a good prescaler value)
           movlw (RANGE_DET_LOOPS)>>8    ; high byte for RANGE DETECTION loop counter
           movwf gatecnt_hi
           movlw (RANGE_DET_LOOPS)&0ffh  ; low byte for RANGE DETECTION loop counter
@@ -1505,13 +1505,13 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
           incf  blinker, f
           incf  psave_timer, f     ; increment the power-save timer every 0.25 seconds too (checked somewhere else)
 
-          ; Look at the range-detection count ("testcount") 
+          ; Look at the range-detection count ("testcount")
           ; and decide which measuring range to use, beginning with the highest frequency range
 #if (DISP_VARIANT==1)
            ; Ranges FOR VARIANT 1,  4 MHz CRYSTAL (low-power variant, less resolution at HF !)
            ; Rng  testcount    f_in            prescaler gate_time   display,   resolution
            ; (1)     0..6         0.. 11.5 kHz   1       1   second  X.XXXkHz,  0.001kHz (4 digits only)
-           ; (2)     7..54         ..103.6 kHz   1       1/2 second  XX.XXXkHz, 0.002kHz (last digit steps by 2) 
+           ; (2)     7..54         ..103.6 kHz   1       1/2 second  XX.XXXkHz, 0.002kHz (last digit steps by 2)
            ; (3)    55..511        ..981.1 kHz   1       1/4 second  XXX.XXkHz, 0.004kHz (last digit steps by 1)
            ; (4)   512..1023       ..  1.9 MHz   2       1/4 second  XXX.XXkHz, 0.008kHz (last digit steps by 1)
            ; (5)  1024..2047       ..  3.9 MHz   4       1/4 second  X.XXXXMHz, 0.016kHz (last digit steps by 1)
@@ -1529,10 +1529,10 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
           btfsc freq_ml,4      ; bit 12 set (>=4096) ->  range 7
           goto  Range7
           btfsc freq_ml,3      ; bit 11 set (>=2048) ->  range 6
-          goto  Range6         
-          btfsc freq_ml,2      ; bit 10 set (>=1024) ->  range 5 
-          goto  Range5         
-          btfsc freq_ml,1      ; bit 9 set (>=512)   ->  range 4 
+          goto  Range6
+          btfsc freq_ml,2      ; bit 10 set (>=1024) ->  range 5
+          goto  Range5
+          btfsc freq_ml,1      ; bit 9 set (>=512)   ->  range 4
           goto  Range4
           btfsc freq_ml,0      ; bit 8 set (>=256) -> no Z flag  -> range 3
           goto  Range3
@@ -1542,7 +1542,7 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
           goto  Range3         ; freq > 100kHz -> also range 3
           movfw freq_lo        ; look at bits 7..0 again ..
           sublw .5             ; subtract #5 - W register -> C=0 if result negative
-          btfss STATUS,C       ; skip next instruction if C=1 
+          btfss STATUS,C       ; skip next instruction if C=1
           goto  Range2         ; freq > 10kHz -> range 2
           goto  Range1         ; otherwise range 1
 #endif ; end of specific range-switching for  DISPLAY VARIANT #1
@@ -1552,7 +1552,7 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
            ; Even if PIC clocked with 20MHz, keep the input of TIMER0 below 4(!) MHz .
            ; Rng  testcount    f_in            prescaler gate_time   display,   resolution
            ; (1)     0..6         0.. 11.5 kHz   1       1   second  X.XXXkHz,  0.001kHz (4 digits only)
-           ; (2)     7..54         ..103.6 kHz   1       1/2 second  XX.XXXkHz, 0.002kHz (last digit steps by 2) 
+           ; (2)     7..54         ..103.6 kHz   1       1/2 second  XX.XXXkHz, 0.002kHz (last digit steps by 2)
            ; (3)    44..2047       ..  3.9 MHz   1       1/4 second  X.XXXXMHz,    4 Hz  (last digit steps by 1)
            ; (4)  2048..4095       ..  7.9 MHz   2       1/4 second  X.XXXXMHz,    8 Hz  (last digit steps by 1)
            ; (5)  4096..8191      ... 15.7 MHz   4       1/4 second  X.XXXXMHz,   16 Hz  (last digit steps by 1)
@@ -1580,15 +1580,15 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
           goto  Range3         ; freq > 100kHz -> also range 3
           movfw freq_lo        ; look at bits 7..0 again ..
           sublw .5             ; subtract #5 - W register -> C=0 if result negative
-          btfss STATUS,C       ; skip next instruction if C=1 
+          btfss STATUS,C       ; skip next instruction if C=1
           goto  Range2         ; freq > 10kHz -> range 2
           goto  Range1         ; otherwise range 1 (lowest frequencies)
 #endif ; end of specific range-switching for  DISPLAY VARIANT #2
 
 Range1:   ; Range 1:  async prescaler off, 1 second gate time for very low frequencies  :
           call  PrescalerOff             ; turn hardware prescaler off
-          incf  psave_timer, f           ; increment power-save timer three more times 
-          incf  psave_timer, f           ;  (1 sec-gate instead of 0.25)  
+          incf  psave_timer, f           ; increment power-save timer three more times
+          incf  psave_timer, f           ;  (1 sec-gate instead of 0.25)
           incf  psave_timer, f
           ; Load the GATE TIMER (as count of loops) for this measuring range.
           movlw (GATE_TIME_LOOPS)>>8     ; high byte for 1 second gate time
@@ -1597,7 +1597,7 @@ Range1:   ; Range 1:  async prescaler off, 1 second gate time for very low frequ
           movwf gatecnt_lo
           ; Load the count of "left shifts" to compensate gate time + prescaler :
           movlw 0   ; no need to multiply with prescaler 1:1 and 1-sec gate time
-          goto  GoMeasure              
+          goto  GoMeasure
 
 Range2:   ; Range 2:  async prescaler off, 1/2 second gate time for quite low frequencies  :
           call  PrescalerOff             ; turn hardware prescaler off
@@ -1609,43 +1609,43 @@ Range2:   ; Range 2:  async prescaler off, 1/2 second gate time for quite low fr
           movwf gatecnt_lo
           ; Load the count of "left shifts" to compensate gate time + prescaler :
           movlw 1   ; multiply by 2 (=2^1) later to compensate gate time (1/2 s)
-          goto  GoMeasure              
-                   
+          goto  GoMeasure
+
 Range3:   ; Range 3: async prescaler off, gate time = default (1/4 sec) :
           call  PrescalerOff             ; turn hardware prescaler off
           movlw 2   ; multiply by 4 (=2^2) later to compensate gate time (1/4 s)
-          goto  GoMeasure              
+          goto  GoMeasure
 
 Range4:   ; Range 4: prescaler divide by 2 , gate time = default (1/4 sec) :
           movlw PSC_DIV_BY_2            ; let the prescaler divide by 2 while MEASURING...
           call  SetPrescaler            ; safely write <W> into option register
           movlw 3   ; multiply by 8 (=2^3) later to compensate prescaling (1:2) * gate time (1/4 s)
-          goto  GoMeasure              
+          goto  GoMeasure
 
 Range5:   ; Range 5: prescaler divide by 4 , gate time = default (1/4 sec) :
           movlw PSC_DIV_BY_4            ; let the prescaler divide by 2 while MEASURING...
           call  SetPrescaler            ; safely write <W> into option register
           movlw 4   ; multiply by 16 (=2^4) later to compensate prescaling (1:4) * gate time (1/4 s)
-          goto  GoMeasure              
+          goto  GoMeasure
 
 Range6:   ; Range 6: prescaler divide by 8 , gate time = default (1/4 sec) :
           movlw PSC_DIV_BY_8            ; let the prescaler divide by 2 while MEASURING...
           call  SetPrescaler            ; safely write <W> into option register
           movlw 5   ; multiply by 32 (=2^5) later to compensate prescaling (1:8) * gate time (1/4 s)
-          goto  GoMeasure              
+          goto  GoMeasure
 
 Range7:   ; Range 7: prescaler divide by 16 , gate time = default (1/4 sec) :
           movlw PSC_DIV_BY_16           ; let the prescaler divide by 2 while MEASURING...
           call  SetPrescaler            ; safely write <W> into option register
           movlw 6   ; multiply by 64 (=2^6) later to compensate prescaling (1:16) * gate time (1/4 s)
-          goto  GoMeasure              
+          goto  GoMeasure
 
 #if (DISP_VARIANT==1)   ; Ranges 8 + 9  are only needed for VARIANT 1  with 4-MHz crystal :
 Range8:   ; Range 8: prescaler divide by 32 , gate time = default (1/4 sec) :
           movlw PSC_DIV_BY_32           ; let the prescaler divide by 2 while MEASURING...
           call  SetPrescaler            ; safely write <W> into option register
           movlw 7   ; multiply by 128 (=2^7) later to compensate prescaling (1:32) * gate time (1/4 s)
-          goto  GoMeasure              
+          goto  GoMeasure
 
 Range9:   ; Range 9: prescaler divide by 64 , gate time = default (1/4 sec) :
           movlw PSC_DIV_BY_64           ; let the prescaler divide by 2 while MEASURING...
@@ -1658,7 +1658,7 @@ Range9:   ; Range 9: prescaler divide by 64 , gate time = default (1/4 sec) :
 
 GoMeasure: movwf adjust_shifts         ; save the number of "arithmetic left shifts" for later
           call count_pulses            ; count pulses for 1, 1/2, or 1/8 s .
-          ; Result in freq_lo,freq_ml,freq_mh,freq_hi (32 bit) now, 
+          ; Result in freq_lo,freq_ml,freq_mh,freq_hi (32 bit) now,
           ; NOT adjusted for the gate-time or prescaler division ratio yet.
 
 
@@ -1673,7 +1673,7 @@ GoMeasure: movwf adjust_shifts         ; save the number of "arithmetic left shi
           call   ClearDisplay          ; then clear the display (latch)
           ; Next: Check if the frequency has changed significantly
           ; since the last 'reload' of the power-save timer.
-          ; To keep things simple, only look at the LOW BYTES of the 
+          ; To keep things simple, only look at the LOW BYTES of the
           ; 'current' and the 'old' frequency reading at this stage
           ; (BEFORE multiplying the result with two power adjust_shifts) .
           ; 'psave_freq_lo' is an "old" reading; 'freq_lo' the current frequency.
@@ -1681,7 +1681,7 @@ GoMeasure: movwf adjust_shifts         ; save the number of "arithmetic left shi
           movfw freq_lo                ; get low-byte of current frequency
           subwf psave_freq_lo, w       ; W := freq_lo - psave_freq_lo
           ; Make the difference (new minus old frequency in W) positive :
-          movwf bTemp                  ; bTemp := (freq_lo - psave_freq_lo)  
+          movwf bTemp                  ; bTemp := (freq_lo - psave_freq_lo)
           btfss bTemp,7                ; check the sign-bit (=MSB)
           goto  PsDiffPos              ; difference already posivite, else :
           comf  bTemp,f                ; bTemp := ~bTemp (for example, 0xFF -> 0x00)
@@ -1692,7 +1692,7 @@ PsDiffPos:; Arrived here: difference made positive, i.e.  bTemp = abs(freq_lo - 
           movfw bTemp                  ; W := abs(freq_lo - psave_freq_lo)
           sublw PSAVE_MAX_DIFF         ; W := PSAVE_MAX_DIFF - W  ; C=0 if result negative (=large f-diff)
           btfsc STATUS,C               ; skip next instruction if large frequency difference
-          goto  PsSmallDiff            ; 
+          goto  PsSmallDiff            ;
 PsLargeDiff: ; Arrived here: there's a LARGE difference between 'current' and 'old' frequency
           bcf    PSFLAG_ACTIVE         ; Back to normal display mode
           clrf   psave_timer           ; restart 'power-save' activation timer (with display ON)
@@ -1716,7 +1716,7 @@ PsSmallDiff: ; Arrived here: there's only a SMALL difference between 'current' a
           goto   PsSleep               ; sleep for the first 600-millisecond-interval now
 
 PsActive: ; Here if power-saving mode already active .
-          ; Check it it's time to let the display flash up for a short time 
+          ; Check it it's time to let the display flash up for a short time
           ; to show the operator we're still alive !
           movfw  psave_timer           ; if(psave_timer > PSAVE_DELAY_TIME ) ...
           sublw  PSAVE_FLASHUP_TIME    ; subtract #PSAVE_FLASHUP_TIME - W -> C=0 if result negative
@@ -1732,7 +1732,7 @@ PsNoTimeout: ; small frequency difference, AND psave_timer still low..
           ; Already in "power-save"-mode or normal display ?
           btfss  PSFLAG_ACTIVE         ; check the flag 'power-save ACTIVE'
           goto   PsNotBlanked          ; not set -> normal display (not blanked)
-          ; Arrived here: 'Saving power', which means the display 
+          ; Arrived here: 'Saving power', which means the display
           ;   is blanked MOST of the time (but it may flash up every XX seconds
           ;   to show the operator we're still alive) .
 PsSleep:  call   Sleep150ms            ; put CPU to sleep for ~500 milliseconds..
@@ -1745,24 +1745,24 @@ PsNotBlanked: ; Display is not blanked for power-saving mode at the moment.
           ; clear the power-save timer to prevent turning off the display
           ; within the next XX seconds :
           ; Reload the power-save-timer if there was a significant change
-          ; since the last comparison. 
+          ; since the last comparison.
 
 
 
 PrepDisp: ; Prepare the frequency (32-bit 'unadjusted' integer) for display:
-          ; Multiply freq by 2^adjust_shifts to adjust for the prescaling 
+          ; Multiply freq by 2^adjust_shifts to adjust for the prescaling
           ; and the timing period .  The result will be a frequency in HERTZ, 32-bit integer.
           ; Note: the adjustment factor may be ONE which means no shift at all.
           tstf  adjust_shifts
-          bz    NoAdjust   
-Adjust:   clrc                          
-          rlf freq_lo , f 
+          bz    NoAdjust
+Adjust:   clrc
+          rlf freq_lo , f
           rlf freq_ml , f
           rlf freq_mh , f
           rlf freq_hi , f
           decfsz adjust_shifts, f
           goto Adjust
-NoAdjust:  
+NoAdjust:
 
           ; Check the result against under- and overflow.
           ; (There should be none if the frequency didn't change too rapidly
@@ -1788,7 +1788,7 @@ NoAdjust:
           movfw freq_lo
           movwf freq2_lo
 
-         ; Add the programmable frequency offset 
+         ; Add the programmable frequency offset
          ; (often used to add or subtract the intermediate frequency in superhet receivers)
           add32 freq, foffs             ; freq := freq+foffs;  32-bit
          ; If the result is negative, make it posisive
@@ -1819,12 +1819,12 @@ CheckProgMode:
 
 freq_underflow:
           movlw BLANK                   ; display underflow as "   0[0]"
-          call conv_char0               
+          call conv_char0
           movlw BLANK
           call conv_char1
           movlw BLANK
           call conv_char2
-          movlw 0                       ; why not 'zero' in the last digit ?                   
+          movlw 0                       ; why not 'zero' in the last digit ?
           call conv_char3
           movlw BLANK
           call conv_char4               ; because the 5th digit is OPTIONAL !
@@ -1854,7 +1854,7 @@ freq_overflow:
 
 
 ;--------------------------------------------------------------------------
-; program loop :  
+; program loop :
 ;  - show a simple menu to select ADD or SUBTRACT offset,
 ;  - save the frequency offset value permanently in DATA EEPROM,
 ;  - return to the main loop when done .
@@ -1882,7 +1882,7 @@ PmDisp5:  call   conv_char4
 
 PmDisp_PSave: ; show "PSave" or "Pnorm", depending on power-save flag
           btfss  OPT_PWRSAVE    ; Power-save mode active ?
-          goto   PMD_NoPwSave   
+          goto   PMD_NoPwSave
           movlw  CHAR_P         ; if so, print "PSAVE"..
           call   conv_char0
           movlw  CHAR_S
@@ -2021,15 +2021,15 @@ PmExec_SetMI: movwf  menu_index
           goto   ProgLoop       ;
 
 PmExec_SelIF  ; Finished selecting a "standard IF" from table.
-              ; Switch back to the main menu, and let 
-              ; the user decide if the offset is positive (add) 
+              ; Switch back to the main menu, and let
+              ; the user decide if the offset is positive (add)
               ; or negative (sub).
           movlw  MI_ADD         ; Suggestion: ADD the offset
           goto   PmExec_SetMI
 
 
 EnterProgLoop:
-       ; Prepare 'program mode' : 
+       ; Prepare 'program mode' :
           clrf   menu_index
 
        ; Show "Prog" on the display
@@ -2064,17 +2064,17 @@ ProgLoop:
 ChkKey:   btfsc  IOP_PROG_MODE   ; "program key" still pressed ? (low means pressed)
           goto   ShortPress      ; no, key released, it was a SHORT press (less than 0.5 seconds)
           call   ProgModeDisplay ; wait another 100 milliseconds
-          decfsz menu_timer, f   ; decrement timer and skip next instruction if NOT zero 
-          goto   ChkKey          ; 
+          decfsz menu_timer, f   ; decrement timer and skip next instruction if NOT zero
+          goto   ChkKey          ;
         ; Arrived here, it's a LONG key press, but the key is still down..
-        ; Wait until the operator releases the "Prog" key 
+        ; Wait until the operator releases the "Prog" key
         ;  Show a BLINKING display while the button is pressed,
         ;  as an indicator for the user to release the button now.
 Release2: call   ClearDisplay    ; fill display latch with blanking pattern
           call   ProgModeDisplay ; show blank display for 0.1 seconds
           call   PMDisplay       ; show string[menu_index] for 0.1 seconds
           btfss  IOP_PROG_MODE   ; Button "program mode" still pressed ?
-          goto   Release2        ; yes, wait for button release, otherwise..  
+          goto   Release2        ; yes, wait for button release, otherwise..
           goto   PMExecute       ; Execute the function belonging to menu_index
 
 ShortPress:  ; advance to the next menu index, but don't execute the associated function
@@ -2088,7 +2088,7 @@ ShortPress:  ; advance to the next menu index, but don't execute the associated 
           goto   ProgLoop  ; end of programming loop
 LastMainMenu:
           clrf   menu_index      ; wrap to 1st menu index
-          goto   ProgLoop  
+          goto   ProgLoop
 NotMainMenu:   ; not main menu, but sub-menu ..
           movfw  menu_index
           sublw  MI_IF_SUBMENU_MAX ; subtract #MI_.. - W register -> C=0 if result negative ("W too large")
@@ -2101,10 +2101,10 @@ NotMainMenu:   ; not main menu, but sub-menu ..
 LastIfSubMenu:  ; was in the last "standard IF submenu"..
           movlw  MI_IF_1         ; back to the 1st standard IF submenu
           movwf  menu_index
-          goto   ProgLoop  
+          goto   ProgLoop
 NotIfSubMenu:   ; was not in the "standard IF submenu"..
           clrf   menu_index      ; must be an error; back to main menu
-          goto   ProgLoop  
+          goto   ProgLoop
 
 
   END   ; directive 'end of program'
