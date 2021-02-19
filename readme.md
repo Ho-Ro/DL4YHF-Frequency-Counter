@@ -1,3 +1,20 @@
+# About This Repo
+
+This repo contains the original source code for Wolfgang Buescher's (DL4YHF)
+PIC based frequency counter in the directory [DL4YHF](DL4YHF). I have modified the code so
+that it can be built with [GNU gpasm](https://gputils.sourceforge.io/) under Linux and have
+added a Makefile. To build just type `make`. The resulting `counter.hex` file is identical
+to Wolfgang's original version `counter2.hex`. This can be tested with `make compare`.
+
+A 2nd source variant [counter_5.asm](counter_5.asm) differs in two details:
+1. Underflow is shown with the zero in the rightmost (5th) digit.
+2. Overflow is shown with the E in the 1st digit.
+
+This looks better on 5-digit units and is easier to recognise at first glance.
+
+Follwing is the original `readme.txt` from Wolfgang's [source code archive](https://www.qsl.net/dl4yhf/freq_counter/freq_counter.zip).
+
+
 Simple frequency counter with a PIC microcontroller
 ---------------------------------------------------
 
