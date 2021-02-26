@@ -1,9 +1,12 @@
 ;**************************************************************************
-; FILE:      C:\PIC\freq_counter\counter1.asm                             *
-; CONTENTS:  Simple low-cost digital frequency meter using a PIC 16F628   *
+; FILE:      counter.asm                                                *
+; CONTENTS:  Simple low-cost digital frequency meter using a PIC 16F628A  *
 ; AUTHOR:    Wolfgang Buescher, DL4YHF                                    *
 ;            (based on a work by James Hutchby, MadLab, 1996)             *
 ; REVISIONS: (latest entry first)                                         *
+; 2021-02-23 - Ho-Ro: 1 Hz resolution up to 99999 Hz (range < 101760 Hz)  *
+; 2021-02-18 - Ho-Ro: display underflow as "    0" (DISPLAY_VARIANT_2/3)  *
+; 2020-08-25 - Ho-Ro: Modified for Linux gpsam (produces identical hex)   *
 ; 2017-09-10 - Nigel Kendrick (nigel-dot-kendrickatgeemail.com            *
 ;              Added option to specify that you are using an external     *
 ;              crystal oscillator on OSC1, which frees OSC2/RA6/PB6       *
@@ -1332,7 +1335,7 @@ displ_kHz:   ; insert a BLINKING POINT to indicate the kilohertz-digit
           bsf digit_4, 7    ; set the decimal point indicating the frequency in kHz .
           goto  display
 
-displ_MHz:   ; insert a BLINKING POINT to indicate the kilohertz-digit
+displ_MHz:   ; insert a STEADY POINT to indicate the megahertz-digit
           bsf   digit_1, 7  ; set the decimal point indicating the frequency in MHz .
 
 
@@ -1511,7 +1514,7 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
            ; Ranges FOR VARIANT 1,  4 MHz CRYSTAL (low-power variant, less resolution at HF !)
            ; Rng  testcount    f_in            prescaler gate_time   display,   resolution
            ; (1)     0..6         0.. 11.5 kHz   1       1   second  X.XXXkHz,  0.001kHz (4 digits only)
-           ; (2)     7..54         ..103.6 kHz   1       1/2 second  XX.XXXkHz, 0.002kHz (last digit steps by 2)
+           ; (2)     7..54         ..105.6 kHz   1       1/2 second  XX.XXXkHz, 0.002kHz (last digit steps by 2)
            ; (3)    55..511        ..981.1 kHz   1       1/4 second  XXX.XXkHz, 0.004kHz (last digit steps by 1)
            ; (4)   512..1023       ..  1.9 MHz   2       1/4 second  XXX.XXkHz, 0.008kHz (last digit steps by 1)
            ; (5)  1024..2047       ..  3.9 MHz   4       1/4 second  X.XXXXMHz, 0.016kHz (last digit steps by 1)
@@ -1548,12 +1551,13 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
 #endif ; end of specific range-switching for  DISPLAY VARIANT #1
 
 #if (DISP_VARIANT==2) || (DISP_VARIANT==3)
+           ; 2021-02-23 (Ho-Ro):
            ; Ranges FOR VARIANT 2+3,  20 MHz CRYSTAL (draws more power, but gives better resolution at HF )
            ; Even if PIC clocked with 20MHz, keep the input of TIMER0 below 4(!) MHz .
            ; Rng  testcount    f_in            prescaler gate_time   display,   resolution
            ; (1)     0..6         0.. 11.5 kHz   1       1   second  X.XXXkHz,  0.001kHz (4 digits only)
-           ; (2)     7..54         ..103.6 kHz   1       1/2 second  XX.XXXkHz, 0.002kHz (last digit steps by 2)
-           ; (3)    44..2047       ..  3.9 MHz   1       1/4 second  X.XXXXMHz,    4 Hz  (last digit steps by 1)
+           ; (2)     7..52         ..101.8 kHz   1       1   second  XX.XXXkHz, 0.001kHz (last digit steps by 1)
+           ; (3)    53..2047       ..  3.9 MHz   1       1/4 second  X.XXXXMHz,    4 Hz  (last digit steps by 1)
            ; (4)  2048..4095       ..  7.9 MHz   2       1/4 second  X.XXXXMHz,    8 Hz  (last digit steps by 1)
            ; (5)  4096..8191      ... 15.7 MHz   4       1/4 second  X.XXXXMHz,   16 Hz  (last digit steps by 1)
            ; (6)  8192..16383     ... 31.4 MHz   8       1/4 second  X.XXXXMHz,   32 Hz  (last digit steps by 1 or 2)
@@ -1575,14 +1579,17 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
           btfsc freq_ml,0      ; bit 8 set (>=256) -> no Z flag  -> range 3
           goto  Range3
           movfw freq_lo        ; now look at bits 7..0 only ..
-          sublw .54            ; subtract #54 - W register -> C=0 if result negative
-          btfss STATUS,C       ; skip next instruction if C=1 (#54-W >= 0)
+          sublw .52            ; subtract #52 - W register -> C=0 if result negative
+          btfss STATUS,C       ; skip next instruction if C=1 (#52-W >= 0)
           goto  Range3         ; freq > 100kHz -> also range 3
-          movfw freq_lo        ; look at bits 7..0 again ..
-          sublw .5             ; subtract #5 - W register -> C=0 if result negative
-          btfss STATUS,C       ; skip next instruction if C=1
-          goto  Range2         ; freq > 10kHz -> range 2
-          goto  Range1         ; otherwise range 1 (lowest frequencies)
+          ; -----------
+          ; 2021-02-23 (Ho-Ro): Disable the next instructions
+          ; to always use 1Hz resolution in the range up to 101800 Hz
+          ;movfw freq_lo        ; look at bits 7..0 again ..
+          ;sublw .5             ; subtract #5 - W register -> C=0 if result negative
+          ;btfss STATUS,C       ; skip next instruction if C=1
+          ;goto  Range2         ; freq > 10kHz -> range 2
+          ;goto  Range1         ; otherwise range 1 (lowest frequencies)
 #endif ; end of specific range-switching for  DISPLAY VARIANT #2
 
 Range1:   ; Range 1:  async prescaler off, 1 second gate time for very low frequencies  :
@@ -1818,17 +1825,26 @@ CheckProgMode:
 ;--------------------------------------------------------------------------
 
 freq_underflow:
-          movlw BLANK                   ; display underflow as "   0[0]"
+          movlw BLANK                   ; display underflow as "    0"
           call conv_char0
           movlw BLANK
           call conv_char1
           movlw BLANK
           call conv_char2
+          ; 2021-02-23 (Ho-Ro): modified to use the 5th digit for display
+          ; variants #2 #3. For variant #1 the code is like it was
+#if (DISP_VARIANT==1)
           movlw 0                       ; why not 'zero' in the last digit ?
           call conv_char3
           movlw BLANK
           call conv_char4               ; because the 5th digit is OPTIONAL !
-
+#endif    ; DISP_VARIANT #1
+#if (DISP_VARIANT==2)  || (DISP_VARIANT==3)
+          movlw BLANK                   ;
+          call conv_char3
+          movlw 0
+          call conv_char4               ; use the 5th digit because its there !
+#endif    ; DISP_VARIANT #2 + #3
           goto CheckProgMode
 
 
@@ -1837,20 +1853,19 @@ freq_underflow:
 ;--------------------------------------------------------------------------
 
 freq_overflow:
-          movlw  BLANK                   ; display overflow as "   E"
+          ; 2021-02-23 (Ho-Ro): modified to display overflow as "E    "
+          movlw  CHAR_E
           call   conv_char0
           movlw  BLANK
           call   conv_char1
           movlw  BLANK
           call   conv_char2
-          movlw  CHAR_E
+          movlw  BLANK
           call   conv_char3
           movlw  BLANK
-          call   conv_char4               ; Note that the 5th digit is OPTIONAL !
-
+          call   conv_char4             ; Note that the 5th digit is OPTIONAL !
 
           goto MainLoop   ; end of main loop
-
 
 
 ;--------------------------------------------------------------------------

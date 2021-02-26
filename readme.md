@@ -1,18 +1,24 @@
 # About This Repo
 
-This repo contains the original source code for Wolfgang Buescher's (DL4YHF)
-PIC based frequency counter in the directory [DL4YHF](DL4YHF). I have modified the code so
-that it can be built with [GNU gpasm](https://gputils.sourceforge.io/) under Linux and have
-added a Makefile. To build just type `make`. The resulting `counter.hex` file is identical
-to Wolfgang's original version `counter2.hex`. This can be tested with `make compare`.
+This repo contains the original public domain source code for Wolfgang Buescher's (DL4YHF)
+PIC based frequency counter in the directory [DL4YHF](DL4YHF) as a reference.
+I have modified the source code [counter_DL4YHF.asm](counter_DL4YHF.asm) slightly so that it can be
+built with [GNU gpasm](https://gputils.sourceforge.io/) under Linux and have added a Makefile.
 
-A 2nd source variant [counter_5.asm](counter_5.asm) differs in two details:
+To build just type `make`. The resulting `counter_DL4YHF.hex` file is identical
+to Wolfgang's original version `DL4YHF/counter2.hex`. This can be tested with `make compare`.
+
+A 2nd variant [counter.asm](counter.asm) differs in three details:
 1. Underflow is shown with the zero in the rightmost (5th) digit.
 2. Overflow is shown with the E in the 1st digit.
+3. Gate time is 1 s for frequencies < 101760 Hz -> display resolution 1 Hz up to 99999 Hz.
+   This change was inspired by [TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification).
 
 This looks better on 5-digit units and is easier to recognise at first glance.
 
-Follwing is the original `readme.txt` from Wolfgang's [source code archive](https://www.qsl.net/dl4yhf/freq_counter/freq_counter.zip).
+The work (except [Wolfgang's original code](DL4YHF) that is in the public domain) is released under GPL v3.
+
+Follwing is the content from original `readme.txt` from Wolfgang's [source code archive](https://www.qsl.net/dl4yhf/freq_counter/freq_counter.zip).
 
 
 Simple frequency counter with a PIC microcontroller

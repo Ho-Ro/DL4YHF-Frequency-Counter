@@ -1,11 +1,13 @@
-all: counter.hex counter_5.hex
+all: counter.hex counter_DL4YHF.hex
 
 counter.hex: counter.asm Makefile
 	gpasm -D DISPLAY_VARIANT_2 $<
 
-counter_5.hex: counter_5.asm Makefile
+counter_DL4YHF.hex: counter_DL4YHF.asm Makefile
 	gpasm -D DISPLAY_VARIANT_2 $<
 
-compare: counter.hex
-	diff -u counter.hex DL4YHF/counter2.hex
+compare: counter_DL4YHF.hex
+	diff -u $< DL4YHF/counter2.hex
 
+clean:
+	-rm -f *.cod *.lst *~

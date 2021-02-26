@@ -1,9 +1,10 @@
 ;**************************************************************************
-; FILE:      C:\PIC\freq_counter\counter1.asm                             *
-; CONTENTS:  Simple low-cost digital frequency meter using a PIC 16F628   *
+; FILE:      counter_DL4YHF.asm                                           *
+; CONTENTS:  Simple low-cost digital frequency meter using a PIC 16F628A  *
 ; AUTHOR:    Wolfgang Buescher, DL4YHF                                    *
 ;            (based on a work by James Hutchby, MadLab, 1996)             *
 ; REVISIONS: (latest entry first)                                         *
+; 2020-08-25 - Ho-Ro: Modified for Linux gpsam (produces identical hex)   *
 ; 2017-09-10 - Nigel Kendrick (nigel-dot-kendrickatgeemail.com            *
 ;              Added option to specify that you are using an external     *
 ;              crystal oscillator on OSC1, which frees OSC2/RA6/PB6       *
@@ -1818,15 +1819,15 @@ CheckProgMode:
 ;--------------------------------------------------------------------------
 
 freq_underflow:
-          movlw BLANK                   ; display underflow as "    0"
+          movlw BLANK                   ; display underflow as "   0[0]"
           call conv_char0
           movlw BLANK
           call conv_char1
           movlw BLANK
           call conv_char2
-          movlw BLANK                   ; why not 'zero' in the last digit ?
+          movlw 0                       ; why not 'zero' in the last digit ?
           call conv_char3
-          movlw 0                       ; normally it is in the previous digit ...
+          movlw BLANK
           call conv_char4               ; because the 5th digit is OPTIONAL !
 
           goto CheckProgMode
@@ -1837,13 +1838,13 @@ freq_underflow:
 ;--------------------------------------------------------------------------
 
 freq_overflow:
-          movlw  CHAR_E                   ; display overflow as "E    "
+          movlw  BLANK                   ; display overflow as "   E"
           call   conv_char0
           movlw  BLANK
           call   conv_char1
           movlw  BLANK
           call   conv_char2
-          movlw  BLANK
+          movlw  CHAR_E
           call   conv_char3
           movlw  BLANK
           call   conv_char4               ; Note that the 5th digit is OPTIONAL !
