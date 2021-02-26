@@ -27,7 +27,7 @@ provides a lot improvements:
 * 1 Hz resolution up to 99999 Hz (range < 101760 Hz).
 * Hi-res (two-decimals) mode with 10 mHz resolution up to 255.99 Hz.
 * Toggle three-decimals mode with 1 mHz resolution up to 60.999 Hz with key press.
-This allows to measure the mains frequencies quite
+This allows to measure the mains frequencies quite precisely.
 * Removed RPM measurement.
 * Enter event counting mode when key pressed at startup.
 * Rewrote "display_freq" to a more consistent layout:
