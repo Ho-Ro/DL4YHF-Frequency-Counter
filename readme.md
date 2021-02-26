@@ -2,12 +2,15 @@
 
 This repo contains the original public domain source code for Wolfgang Buescher's (DL4YHF)
 PIC based frequency counter in the directory [DL4YHF](DL4YHF) as a reference.
+
+## counter_DL4YHF.asm
 I have modified the source code [counter_DL4YHF.asm](counter_DL4YHF.asm) slightly so that it can be
 built with [GNU gpasm](https://gputils.sourceforge.io/) under Linux and have added a Makefile.
 
 To build just type `make`. The resulting `counter_DL4YHF.hex` file is identical
 to Wolfgang's original version `DL4YHF/counter2.hex`. This can be tested with `make compare`.
 
+## counter.asm
 A 2nd variant [counter.asm](counter.asm) differs in three details:
 1. Underflow is shown with the zero in the rightmost (5th) digit.
 2. Overflow is shown with the E in the 1st digit.
@@ -16,6 +19,60 @@ A 2nd variant [counter.asm](counter.asm) differs in three details:
 
 This looks better on 5-digit units and is easier to recognise at first glance.
 
+## counter_hires_event.asm
+A 3rd variant [counter_hires_event.asm](counter_hires_event.asm) that is heavily based on the good work of
+[TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification)
+provides a lot improvements:
+
+* 1 Hz resolution up to 99999 Hz (range < 101760 Hz).
+* Hi-res (two-decimals) mode with 10 mHz resolution up to 255.99 Hz.
+* Toggle three-decimals mode with 1 mHz resolution up to 60.999 Hz with key press.
+This allows to measure the mains frequencies quite
+* Removed RPM measurement.
+* Enter event counting mode when key pressed at startup.
+* Rewrote "display_freq" to a more consistent layout:
+
+````
+ -------------------------
+ |           |  DISPLAY  |
+ | Frequency | Freq mode |
+ |-----------|-----------|
+ | < 1 Hz    |        0  |
+ | 1 Hz      |    1„000„ |  Two Hz-dots are flashing (three-digits mode)
+ | 10 Hz     |   10„000„ |  Two Hz-dots are flashing (three-digits mode)
+ | 1 Hz      |     1„00„ |  Two Hz-dots are flashing
+ | 10 Hz     |    10„00„ |  Two Hz-dots are flashing
+ | 100 Hz    |   100„00„ |  Two Hz-dots are flashing
+ | 255.99 Hz |   255„99„ |  Two Hz-dots are flashing
+ | 256 Hz    |    0„256  |  One kHz-dot is flashing
+ | 1000 Hz   |    1„000  |  One kHz-dot is flashing
+ | 10.00 KHz |   10„000  |  One kHz-dot is flashing
+ | 100.0 KHz |   100„00  |  One kHz-dot is flashing
+ | 1.000 MHz |   1.0000  |  One MHz-dot is steady
+ | 10.00 MHz |   10.000  |  One MHz-dot is steady
+ -------------------------
+ '.': steady display dot
+ '„': flashing display dot
+````
+
+The flashing dots change their state with the measurement rate
+### Three-digits mode
+Frequencies < 61 Hz can optionally be displayed with three decimal digits e.g. "50.123."
+To switch between two- and three-digit mode, press the key until the mode changes.
+The high-resolution mode is cancelled when the frequency rises above 61 Hz.
+The 61 Hz is a compromise between the conversion time and the possibility
+of measuring the mains frequencies 50 Hz or 60 Hz precisely. A measurement of the mains frequency
+shows almost exact matching with the values available online from https://www.netzfrequenzmessung.de/.
+
+If there is no signal at all, a single zero is displayed in the 5th digit.
+
+### Event counting mode
+To enter the event counting mode, press the button during power-up
+until the message "Count" is shown.
+Events are shown with leading zeros and without dots, e.g. "01234".
+Pressing the button at any time resets the counter back to zero.
+
+## License
 The work (except [Wolfgang's original code](DL4YHF) that is in the public domain) is released under GPL v3.
 
 Follwing is the content from original `readme.txt` from Wolfgang's [source code archive](https://www.qsl.net/dl4yhf/freq_counter/freq_counter.zip).

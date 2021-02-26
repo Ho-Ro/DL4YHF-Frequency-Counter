@@ -1,6 +1,7 @@
 orig
 *.orig
 *.new
+*.old
 *.cod
 *.lst
 *~
