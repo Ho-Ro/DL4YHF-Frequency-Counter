@@ -4,7 +4,10 @@
 ; AUTHOR:    Wolfgang Buescher, DL4YHF                                    *
 ;            (based on a work by James Hutchby, MadLab, 1996)             *
 ; REVISIONS: (latest entry first)                                         *
-;                                                                         *
+; 2021-02-28 - Ho-Ro:                                                     *
+;              Added TheHWcode's commit f16a1b0 (conv. range fix, bugfix) *
+;              Calibration support: apply exact 1 MHz (e.g. from GPDSO),  *
+;              press button and adjust to 00000 (last digit = 1Hz = 1ppm) *
 ; 2021-02-26 - Ho-Ro:                                                     *
 ;              1 Hz resolution up to 99999 Hz (range < 101760 Hz)         *
 ;              hi-res (two decimals) up to 255.99 Hz                      *
@@ -323,14 +326,17 @@ pdiv_mh         equ  0x56       ; used to store the final division result (bits 
 pdiv_ml         equ  0x57       ; ... bits 8..15
 pdiv_lo         equ  0x58       ; ... bits 0..7
 pmodeflag       equ  0x59       ; 7 6 5 4 3 2 1 0
-                                ; 0 0 0 - - - - -    = period measuring off (normal freq disp)
-                                ; 1 0 0 - - - - -    = PMODE_ON: measure 10mHz
-                                ; 1 1 0 - - - - -    = PMODE_ON + VERY_LOW: measure 1 mHz
-                                ; 0 0 1 - - - - -    = EVENT_ON: count events, period measuring off
+                                ; 0 0 0 0 - - - -    = period measuring off (normal freq disp)
+                                ; 1 0 0 0 - - - -    = PMODE_ON: measure 10mHz
+                                ; 1 1 0 0 - - - -    = PMODE_ON + VERY_LOW: measure 1 mHz
+                                ; 0 0 1 0 - - - -    = CALIBRATE
+                                ; 0 0 0 1 - - - -    = EVENT_ON: count events, period measuring off
 #define PMODE_ON pmodeflag,7    ; 0 = off, 1 = on
 #define VERY_LOW pmodeflag,6    ; 0 = normal, 1 = measure 1e-3 Hz
-#define EVENT_ON pmodeflag,5    ; 0 = off, 1 = on
+#define CALIBRATE pmodeflag,5   ; 0 = normal, 1 = measure 1 second and display lowest 5 digits
+#define EVENT_ON pmodeflag,4    ; 0 = off, 1 = on
 #define VERY_LOW_MASK b'01000000'
+
 ;**************************************************************************
 ;                                                                         *
 ; Macros                                                                  *
@@ -938,7 +944,7 @@ count1  movfw   disp_index      ; [1] get the current digit number (disp_index =
                                 ;       (2^n) to compensate for the ASYNCHRON PRESCALER !
 
         btfsc   freq_mh,7       ; [34] overflow (freq > 7fffffh) ?
-        goto    count3          ; [35] branch if yes
+        goto    count3          ; [35+1] stop if yes
 
         nop                     ; [36]
         nop                     ; [37]
@@ -1023,6 +1029,7 @@ P_Measure:
 
         ;  period = pstart - gatecnt  (period=pstart; period=period-pstart
         ;
+        nop                     ; [65]
         movlw   .2              ; [66] prepare to add 2x4 =8 wasted instructions later 82+8=90
         movwf   period_waste    ; [67]
         movfw   pstart_hi       ; [68]
@@ -1226,6 +1233,8 @@ display_f_int:
         bcf     VERY_LOW                ; leave very low mode
         btfsc   EVENT_ON                ; if event mode
         goto    display_5_lowest        ; .. show 5 rightmost digits without point
+        btfsc   CALIBRATE               ; if calibrate mode
+        goto    display_calibrate       ; .. show 5 rightmost digits with 2 points alternating
         movlw   digits                  ; else find the first significant digit ..
         movwf   FSR                     ; .. by stepping over leading zeroes
         tstf    INDF                    ; INDF = *(FSR) in "C" syntax, FSR points to 'digits'
@@ -1257,6 +1266,13 @@ displ_d1:
 displ_d0:       ; left aligned with STEADY POINT at megahertz-digit
         bsf     digit_1, 7              ; set the decimal point indicating MHz
         goto    display
+
+display_calibrate:                      ; cal. mode: blink two left dots alternating
+        bcf     CALIBRATE               ; clear CALIBRATE mode
+        btfss   blinker, 0              ; if blink flag clear
+        bsf     digit_3, 7              ; .. set topmost dot
+        btfsc   blinker, 0              ; if blink flag set
+        bsf     digit_4, 7              ; .. set 2nd dot
 
 display_5_lowest:                       ; show 5 lowest digits
         movlw   digit_3
@@ -1423,39 +1439,59 @@ RANGE_DET_LOOPS equ  CLOCK/(.30*CYCLES) ; number of gate-time loops to detect th
 
         ; Look at the range-detection count ("testcount")
         ; and decide which measuring range to use, beginning with the highest frequency range.
-
-        ; Ranges FOR  20 MHz CRYSTAL (draws more power, but gives better resolution at HF )
+        ;
         ; Even if PIC clocked with 20MHz, keep the input of TIMER0 below 4(!) MHz.
-        ; Rng  testcount    f_in            prescaler gate_time   display,   resolution
-        ; (1)     0..6         0.. 11.5 kHz   1       1   second  X.XXXkHz,  0.001kHz (4 digits only)
-        ; (2)     7..52         ..101.8 kHz   1       1   second  XX.XXXkHz, 0.001kHz (last digit steps by 1)
-        ; (3)    53..2047       ..  3.9 MHz   1       1/4 second  X.XXXXMHz,    4 Hz  (last digit steps by 1)
-        ; (4)  2048..4095       ..  7.9 MHz   2       1/4 second  X.XXXXMHz,    8 Hz  (last digit steps by 1)
-        ; (5)  4096..8191      ... 15.7 MHz   4       1/4 second  X.XXXXMHz,   16 Hz  (last digit steps by 1)
-        ; (6)  8192..16383     ... 31.4 MHz   8       1/4 second  X.XXXXMHz,   32 Hz  (last digit steps by 1 or 2)
-        ; (7) 16384..33330     ... 63.9 MHz  16       1/4 second  XX.XXXMHz,   64 Hz  (last digit steps by 1)
+        ; Also hi and low time of the input signal must be > 2 * Tosc + 20 ns = 120 ns
+        ;
+        ; TheHWcave 2021-02-27:
+        ; "The v2 version fixes a problem discovered by a user (Haim)
+        ; of Wolf's original firmware when measuring frequencies in the range 1 .. 4 MHz.
+        ; It is also present in my changed firmware. Below 4MHz is the highest frequency range
+        ; the PIC measures without pre-scaler. If you measure signals with a duty cycle;
+        ; significantly different from 50% in that range, the pulse width can drop;
+        ; below the 120ns required by the PIC. This causes the PIC to show fluctuating values
+        ; and it is quite obvious when it happens.
+        ; It is more likely to happen if no pre-amp is used but can happen even with a pre-amp.
+        ; The fix is to use the pre-scaler earlier (above 983KHz) because that reduces
+        ; the required pulse-width significantly. This reduces the measurement resolution
+        ; from 4Hz to 8Hz in the range from 1..4MHz but is no issue because we can anyway
+        ; only see the top 5 digits (display resolution 100Hz)."
+
+        ; Ranges for 20 MHz CRYSTAL
+        ; Range  testcount       f_in     presc. gate_time   display  resol. last digit step
+        ; (1)      0..52      ..101.8 kHz   1    1   second  XX„XXX    1 Hz  1
+        ; (8a)    53..255     ..  492 kHz   2    1/4 second  XXX„XX    4 Hz  1
+        ; (8a)   256..511     ..  983 KHz   2    1/4 second  X.XXXX    8 Hz  1
+        ; (8a)   512..1023    .. 1.96 MHz   2    1/4 second  X.XXXX    8 Hz  1
+        ; (8a)  1024..2047    ..  3.9 MHz   2    1/4 second  X.XXXX    8 Hz  1
+        ; (8b)  2048..4095    ..  7.9 MHz   2    1/4 second  X.XXXX    8 Hz  1
+        ; (16)  4096..8191    .. 15.7 MHz   4    1/4 second  X.XXXX   16 Hz  1
+        ; (32)  8192..16383   .. 31.4 MHz   8    1/4 second  X.XXXX   32 Hz  1 or 2 (?)
+        ; (64) 16384..33330   .. 63.9 MHz  16    1/4 second  XX.XXX   64 Hz  1
+        ;
         movfw   freq_ml         ; first look at bits 15..8 of the 'test count' result
-        andlw   b'11000000'     ; any of bits 15..14 set (>=16384) -> no Z flag -> range 7
+        andlw   b'11000000'     ; any of bits 15..14 set (>=16384) -> no Z flag -> range 64
         btfss   STATUS,Z        ; skip next instruction if ZERO-flag set (!)
-        goto    Range7          ; far jump to range 7
-        btfsc   freq_ml,5       ; bit 13 set (>=8192) ->  range 6
-        goto    Range6
-        btfsc   freq_ml,4       ; bit 12 set (>=4096) ->  range 5
-        goto    Range5
-        btfsc   freq_ml,3       ; bit 11 set (>=2048) ->  range 4
-        goto    Range4
-        btfsc   freq_ml,2       ; bit 10 set (>=1024) ->  range 3
-        goto    Range3
-        btfsc   freq_ml,1       ; bit 9 set (>=512)   ->  range 3
-        goto    Range3
-        btfsc   freq_ml,0       ; bit 8 set (>=256) -> no Z flag  -> range 3
-        goto    Range3
+        goto    Range64         ; far jump to range 64
+        btfsc   freq_ml,5       ; bit 13 set (>=8192) ->  range 32
+        goto    Range32
+        btfsc   freq_ml,4       ; bit 12 set (>=4096) ->  range 16
+        goto    Range16
+        btfsc   freq_ml,3       ; bit 11 set (>=2048) ->  range 8b (w/o "zoom" option)
+        goto    Range8b
+        btfsc   freq_ml,2       ; bit 10 set (>=1024) ->  range 8a (with "zoom" option)
+        goto    Range8a
+        btfsc   freq_ml,1       ; bit 9 set (>=512)   ->  range 8a
+        goto    Range8a
+        btfsc   freq_ml,0       ; bit 8 set (>=256)   ->  range 8a
+        goto    Range8a
         movfw   freq_lo         ; now look at bits 7..0 only ..
         sublw   .52             ; subtract #52 - W register -> C=0 if result negative
         btfss   STATUS,C        ; skip next instruction if C=1 (#52-W >= 0)
-        goto    Range3          ; freq > 100kHz -> also range 3
-
-Range1: ; Range 1:  async prescaler off, 1 second gate time for very low frequencies  :
+        goto    Range8a         ; freq > 101.8 kHz -> also range 8a
+                                ; .. else: range 1
+Range1:
+        ; .. 101.8 kHz, async prescaler off, 1 second gate time for low frequencies
         call    PrescalerOff    ; turn hardware prescaler off
         ; Load the GATE TIMER (as count of loops) for this measuring range.
         movlw   (GATE_TIME_LOOPS)>>8    ; high byte for 1 second gate time
@@ -1466,57 +1502,52 @@ Range1: ; Range 1:  async prescaler off, 1 second gate time for very low frequen
         movlw   0   ; no need to multiply with prescaler 1:1 and 1-sec gate time
         goto    GoMeasure
 
-#if 0
-Range2: ; Range 2:  async prescaler off, 1/2 second gate time for quite low frequencies (not used)
-        call    PrescalerOff            ; turn hardware prescaler off
-        ; Load the GATE TIMER (as count of loops) for this measuring range.
-        movlw   (GATE_TIME_LOOPS/2)>>8  ; high byte for 1/2 second gate time
-        movwf   gatecnt_hi
-        movlw   (GATE_TIME_LOOPS/2)&0ffh ; low byte for 1/2 second gate time
-        movwf   gatecnt_lo
-        ; Load the count of "left shifts" to compensate gate time + prescaler :
-        movlw   1   ; multiply by 2 (=2^1) later to compensate gate time (1/2 s)
-        goto    GoMeasure
-#endif
+Range1_zoom:
+        ; measure one second and show the 5 low digits with 1Hz resolution
+        ; this allows e.g. to calibrate the quartz oscillator circuit:
+        ; apply exact 1 or 2 MHz - e.g. from GPSDO - and adjust the display to 00000
+        bsf     CALIBRATE       ; use "display_calibrate" later to show low 1 Hz res
+        goto Range1
 
-Range3: ; Range 3: async prescaler off, gate time = default (1/4 sec) :
-        call    PrescalerOff             ; turn hardware prescaler off
-        movlw   2   ; multiply by 4 (=2^2) later to compensate gate time (1/4 s)
-        goto    GoMeasure
-
-Range4: ; Range 4: prescaler divide by 2 , gate time = default (1/4 sec) :
+Range8a:
+        ; 101.8 .. 3900 kHz with the possibility to "zoom" into the low 5 digit
+        btfss   IOP_SWITCH              ; if switch is low (pressed) ..
+        goto    Range1_zoom             ; .. calibration zoom
+Range8b:
+        ; 3.9 .. 7.9 MHz, prescaler divide by 2, gate time = default (1/4 sec) :
         movlw   PSC_DIV_BY_2            ; let the prescaler divide by 2 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
         movlw   3   ; multiply by 8 (=2^3) later to compensate prescaling (1:2) * gate time (1/4 s)
         goto    GoMeasure
 
-Range5: ; Range 5: prescaler divide by 4 , gate time = default (1/4 sec) :
+Range16:
+        ; .. 15.7 MHz, prescaler divide by 4 , gate time = default (1/4 sec) :
         movlw   PSC_DIV_BY_4            ; let the prescaler divide by 2 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
         movlw   4   ; multiply by 16 (=2^4) later to compensate prescaling (1:4) * gate time (1/4 s)
         goto    GoMeasure
 
-Range6: ; Range 6: prescaler divide by 8 , gate time = default (1/4 sec) :
+Range32:
+        ; .. 31.4 MHz, prescaler divide by 8 , gate time = default (1/4 sec) :
         movlw   PSC_DIV_BY_8            ; let the prescaler divide by 2 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
         movlw   5   ; multiply by 32 (=2^5) later to compensate prescaling (1:8) * gate time (1/4 s)
         goto    GoMeasure
 
-Range7: ; Range 7: prescaler divide by 16 , gate time = default (1/4 sec) :
+Range64:
+        ; .. 63.9 MHz, prescaler divide by 16 , gate time = default (1/4 sec) :
         movlw   PSC_DIV_BY_16           ; let the prescaler divide by 2 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
         movlw   6   ; multiply by 64 (=2^6) later to compensate prescaling (1:16) * gate time (1/4 s)
-        goto    GoMeasure
-
-
+        ;goto    GoMeasure
 
 GoMeasure:
-        movwf adjust_shifts             ; save the number of "arithmetic left shifts" for later
+        movwf   adjust_shifts           ; save the number of "arithmetic left shifts" for later
         btfss   EVENT_ON                ; ifnot in event mode
         goto    GoMeasure1              ; .. skip the counting stuff
 
 MainLoopCnt:
-        ; we are in counter mode
+        ; we are in event counter mode
         ; Load the GATE TIMER (as count of loops) for this measuring range.
         movlw   (GATE_TIME_LOOPS/.10)>>8   ; high byte for 1/10 second gate time
         movwf   gatecnt_hi
@@ -1571,7 +1602,7 @@ cntreset:
 
 GoMeasure1:
         ; measure frequency or RPM
-        call    count_pulses            ; count pulses for 1, 1/2, or 1/8 s .
+        call    count_pulses    ; count pulses for 1, 1/4, or 1/8 s
         ; Result in freq_lo,freq_ml,freq_mh,freq_hi (32 bit) now,
         ; NOT adjusted for the gate-time or prescaler division ratio yet.
 
