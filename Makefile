@@ -21,3 +21,6 @@ clean:
 
 flash: $(target).hex
 	diff -q $< $<.old || (ardpicprog --erase --burn -i $< && cp $< $<.old)
+
+reflash: $(target).hex
+	ardpicprog --erase --burn -i $<
