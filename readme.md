@@ -24,34 +24,38 @@ A 3rd variant [counter_hires_event.asm](counter_hires_event.asm) that is heavily
 [TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification)
 provides a lot improvements:
 
-* 1 Hz resolution up to 99999 Hz (range < 101760 Hz).
+* Measuremant range > 100 MHz (out of PIC prescaler spec but may work)
+* 1 Hz resolution up to 99999 Hz (range < 100800 Hz).
+* Round the displayed value for frequencies > 99999 Hz.
 * Hi-res (two-decimals) mode with 10 mHz resolution up to 255.99 Hz.
 * Toggle three-decimals mode with 1 mHz resolution up to 60.999 Hz with key press.
-This allows to measure the mains frequencies quite precisely.
-* Zoom into the 5 lowest digits while measuring frequencies up to 3.9 MHz
+This allows to measure the mains frequencies very precisely.
+* Zoom into the 5 lowest digits while measuring frequencies up to 3.2 MHz, this allows to
+calibrate the counter exactly, apply exact 1 MHz, e.g. from a GPDSO and adjust to 00000.
 * Removed RPM measurement.
 * Enter event counting mode when key pressed at startup.
 * Rewrote "display_freq" to show a more consistent layout:
 
 ````
- -------------------------
- |           |  DISPLAY  |
- | Frequency | Freq mode |
- |-----------|-----------|
- | < 1 Hz    |        0  |
- | 1 Hz      |    1„000„ |  Two Hz-dots are flashing (three-digits mode)
- | 10 Hz     |   10„000„ |  Two Hz-dots are flashing (three-digits mode)
- | 1 Hz      |     1„00„ |  Two Hz-dots are flashing
- | 10 Hz     |    10„00„ |  Two Hz-dots are flashing
- | 100 Hz    |   100„00„ |  Two Hz-dots are flashing
- | 255.99 Hz |   255„99„ |  Two Hz-dots are flashing
- | 256 Hz    |    0„256  |  One kHz-dot is flashing
- | 1000 Hz   |    1„000  |  One kHz-dot is flashing
- | 10.00 KHz |   10„000  |  One kHz-dot is flashing
- | 100.0 KHz |   100„00  |  One kHz-dot is flashing
- | 1.000 MHz |   1.0000  |  One MHz-dot is steady
- | 10.00 MHz |   10.000  |  One MHz-dot is steady
- -------------------------
+ --------------------------
+ |            |  DISPLAY  |
+ | Frequency  | Freq mode |
+ |------------|-----------|
+ | < 1 Hz     |        0  |
+ | 1 Hz       |    1„000„ |  Two Hz-dots are flashing (three-digits mode)
+ | 10 Hz      |   10„000„ |  Two Hz-dots are flashing (three-digits mode)
+ | 1 Hz       |     1„00„ |  Two Hz-dots are flashing (normal mode)
+ | 10 Hz      |    10„00„ |  Two Hz-dots are flashing (normal mode)
+ | 100 Hz     |   100„00„ |  Two Hz-dots are flashing (normal mode)
+ | 255.99 Hz  |   255„99„ |  Two Hz-dots are flashing (normal mode)
+ | 256 Hz     |    0„256  |  One kHz-dot is flashing
+ | 1000 Hz    |    1„000  |  One kHz-dot is flashing
+ | 10.000 KHz |   10„000  |  One kHz-dot is flashing
+ | 100.00 KHz |   100„00  |  One kHz-dot is flashing
+ | 1.0000 MHz |   1.0000  |  One MHz-dot is steady
+ | 10.000 MHz |   10.000  |  One MHz-dot is steady
+ | 100.00 MHz |   100.00  |  One MHz-dot is steady
+ --------------------------
  '.': steady display dot
  '„': flashing display dot
 ````
@@ -67,11 +71,11 @@ To switch between two- and three-digits mode, press the key until the mode chang
 The high-resolution mode is cancelled when the frequency rises above 61 Hz.
 The 61 Hz is a compromise between the conversion time and the possibility
 of measuring typical mains frequencies 50 Hz or 60 Hz precisely.
-A measurement of the mains frequency shows almost exact matching
-with the values available online from https://www.netzfrequenzmessung.de/.
+A test measurement of the European mains frequency shows almost exact matching
+with the realtime values available online from https://www.netzfrequenzmessung.de/.
 
 ### Calibration "zoom"
-In the frequency range 983 .. 3900 kHz the display can be "zoomed" into a 1 Hz resolution
+In the frequency range 100 .. 3200 kHz the display can be "zoomed" into a 1 Hz resolution
 by pressing the button. This selects temporarily a measurement range of 1 s gate time
 without prescaler, yielding 1 Hz resolution,
 e.g.: a signal of exact 1012345 Hz normally shows `1.0123` with a steady dot, meaning 1.0123 MHz.
@@ -80,6 +84,7 @@ giving `1„2„345`, where `„` symbolises the alternately flashing dots.
 
 This mode is intended to calibrate the quartz oscillator circuit; apply an exact 1 MHz signal
 (e.g. from a GPSDO) and adjust the variable capacitor until the display shows `0„0„000`.
+This will give you short term accuracy down to 1ppm.
 
 ### Event counting mode
 To enter the event counting mode, press the button during power-up

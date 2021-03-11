@@ -1,9 +1,16 @@
 ;**************************************************************************
 ; FILE:      counter_hires_event.asm                                      *
 ; CONTENTS:  Simple low-cost digital frequency meter using a PIC 16F628A  *
-; AUTHOR:    Wolfgang Buescher, DL4YHF                                    *
+; ORIGIN:    Wolfgang Buescher, DL4YHF                                    *
 ;            (based on a work by James Hutchby, MadLab, 1996)             *
+;            This software works only with hardware version COUNZTER2:    *
+;            PIC16F628A clocked with 20 MHz, 5 digits common cathode LEDs *
+;            The hardware is available as a kit from china:               *
+;            "Crystal Oscillator Frequency Counter Tester" for ~10€ or $  *
+;                                                                         *
 ; REVISIONS: (latest entry first)                                         *
+; 2021-03-11 - Ho-Ro:                                                     *
+;              Increase display range to nnn MHz (measure up to 120 MHz)  *
 ; 2021-03-05 - Ho-Ro:                                                     *
 ;              Round values for ranges nnn kHz, n MHz and nn MHz          *
 ;              instead of cutting lower digits                            *
@@ -214,15 +221,16 @@ CLOCK     equ  .20000000
 ; clocked with 20 MHz
   ; 20 microseconds is possible with 20-MHz-Crystal,
   ; Make sure all gate times can be divided by this interval without remainder :
-  ; 1   second / 20 us = 50000  (ok)
-  ; 1/4 second / 20 us = 12500  (ok)
-  ; 1/8 second / 20 us =  6250  (ok)
+  ; 1    second / 20 us = 50000  (ok)
+  ; 1/2  second / 20 us = 25000  (ok)
+  ; 1/4  second / 20 us = 12500  (ok)
+  ; 1/8  second / 20 us =  6250  (ok)
+  ; 1/16 second / 20 us =  3125  (ok)
 TIME      equ  .20
 
 
 ; Clock cycles per timing loop.  See subroutine count_pulses .
-;  Usually CYCLES=200 (for 4 MHz crystal,  50 usec - loop)
-;              or 400 (for 20 MHz crystal, 20 usec - loop)
+;  Usually CYCLES=400 (for 20 MHz crystal, 20 usec - loop)
 CYCLES    equ  TIME*CLOCK/.1000000
 
 GATE_TIME_LOOPS equ  CLOCK/CYCLES       ;  number of gate-time loops for ONE SECOND gate time
@@ -298,38 +306,39 @@ menu_index      equ  0x3C       ; menu item for programming mode
 menu_timer      equ  0x3D       ; used to detect how long a key was pressed
 
 digits          equ  0x40       ; frequency as decimal digits (8 bytes)...
-digit_0         equ  0x40       ; same location as MOST SIGNIFICANT digit, 10-MHz
-digit_1         equ  0x41       ; usually the 1-MHz-digit
-digit_2         equ  0x42       ; usually the 100-kHz-digit
-digit_3         equ  0x43       ; usually the 10-kHz-digit
-digit_4         equ  0x44       ; usually the 1-kHz-digit
-digit_5         equ  0x45       ; usually the 100-Hz-digit
-digit_6         equ  0x46       ; usually the 10-Hz-digit
-digit_7         equ  0x47       ; usually the 1-Hz-digit
-digit_8         equ  0x48       ; must contain a blank character (or trailing zero)
+digit_0         equ  0x40       ; same location as MOST SIGNIFICANT digit, 100-MHz
+digit_1         equ  0x41       ; usually the 10-MHz-digit
+digit_2         equ  0x42       ; usually the 1-MHz-digit
+digit_3         equ  0x43       ; usually the 100-kHz-digit
+digit_4         equ  0x44       ; usually the 10-kHz-digit
+digit_5         equ  0x45       ; usually the 1-kHz-digit
+digit_6         equ  0x46       ; usually the 100-Hz-digit
+digit_7         equ  0x47       ; usually the 10-Hz-digit
+digit_8         equ  0x48       ; usually the 1-Hz-digit
+digit_9         equ  0x49       ; must contain a blank character (or trailing zero)
 
-display0        equ  0x49       ; display #0 data
-display1        equ  0x4A       ; display #1 data
-display2        equ  0x4B       ; display #2 data
-display3        equ  0x4C       ; display #3 data
-display4        equ  0x4D       ; display #4 data
+display0        equ  0x4A       ; display #0 data
+display1        equ  0x4B       ; display #1 data
+display2        equ  0x4C       ; display #2 data
+display3        equ  0x4D       ; display #3 data
+display4        equ  0x4E       ; display #4 data
 
-disp_index      equ  0x4E       ; index of the enabled display (0 to 4 for 5-digit display)
-disp_timer      equ  0x4F       ; display multiplex timer (5 bits)
+disp_index      equ  0x4F       ; index of the enabled display (0 to 4 for 5-digit display)
+disp_timer      equ  0x50       ; display multiplex timer (5 bits)
 
-adjust_shifts   equ  0x50       ; count of 'left shifts' to compensate prescaler+gate time
+adjust_shifts   equ  0x51       ; count of 'left shifts' to compensate prescaler+gate time
 
-blinker         equ  0x51       ; prescaler for the flashing 1-kHz-dot
+blinker         equ  0x52       ; prescaler for the flashing 1-kHz-dot
 
-period_waste    equ  0x52       ; stores the number of cycle*4 to waste to make up the correct total
+period_waste    equ  0x53       ; stores the number of cycle*4 to waste to make up the correct total
                                 ; ... number of instructions in the count_pulses loop
-pcnt            equ  0x53       ; number of periods measured
-period_hi       equ  0x54       ; accumulated period in 20us increments (high byte)
-period_lo       equ  0x55       ; ... low byte
-pdiv_mh         equ  0x56       ; used to store the final division result (bits 16..23)
-pdiv_ml         equ  0x57       ; ... bits 8..15
-pdiv_lo         equ  0x58       ; ... bits 0..7
-pmodeflag       equ  0x59       ; 7 6 5 4 3 2 1 0
+pcnt            equ  0x54       ; number of periods measured
+period_hi       equ  0x55       ; accumulated period in 20us increments (high byte)
+period_lo       equ  0x56       ; ... low byte
+pdiv_mh         equ  0x57       ; used to store the final division result (bits 16..23)
+pdiv_ml         equ  0x58       ; ... bits 8..15
+pdiv_lo         equ  0x59       ; ... bits 0..7
+pmodeflag       equ  0x5A       ; 7 6 5 4 3 2 1 0
                                 ; 0 0 0 0 - - - -    = period measuring off (normal freq disp)
                                 ; 1 0 0 0 - - - -    = PMODE_ON: measure 10mHz
                                 ; 1 1 0 0 - - - -    = PMODE_ON + VERY_LOW: measure 1 mHz
@@ -377,17 +386,12 @@ addcwf  macro reg
         local add1,add2
 
         BNC add1                      ; branch if no carry set
-
         addwf reg , f                 ; add byte
-
         incf reg , f                  ; add carry
         skpnz
         setc
-
         goto add2
-
 add1    addwf reg,f                   ; add byte
-
 add2
         endm
 
@@ -423,13 +427,10 @@ add32   macro op1,op2                 ; op1 := op1 + op2
 
         movfw op2+3                   ; add low byte        (bits 7...0)
         addwf op1+3,f
-
         movfw op2+2                   ; add middle-low byte (bits 15..8)
         addcwf op1+2
-
         movfw op2+1                   ; add middle-high byte (bits 23...16)
         addcwf op1+1
-
         movfw op2+0                   ; add high byte       (bits 31...24)
         addcwf op1+0
 
@@ -446,13 +447,10 @@ sub32   macro op1,op2                 ; op1 := op1 - op2
 
         movfw op2+3                   ; subtract low byte
         subwf op1+3 , f
-
         movfw op2+2                   ; subtract middle low byte
         subncwf op1+2
-
         movfw op2+1                   ; subtract middle high byte
         subncwf op1+1
-
         movfw op2+0                   ; subtract high byte
         subncwf op1+0
 
@@ -491,6 +489,7 @@ neg_done
 ;--------------------------------------------------------------------------
 
 subx32  macro src,dst          ;dst := dst - src
+
         bsf STATUS, C
         movf src+3,w
         btfss STATUS, C
@@ -508,9 +507,12 @@ subx32  macro src,dst          ;dst := dst - src
         btfss STATUS, C
         incfsz src+0,w
         subwf dst+0,f
+
         endm
 
+
 addx32  macro src,dst          ;dst := dst + src
+
         bcf STATUS, C
         movf src+3,w
         btfsc STATUS, C
@@ -528,6 +530,7 @@ addx32  macro src,dst          ;dst := dst + src
         btfsc STATUS, C
         incfsz src+0,w
         addwf dst+0,f
+
         endm
 
 ;--------------------------------------------------------------------------
@@ -535,6 +538,7 @@ addx32  macro src,dst          ;dst := dst + src
 ; (most significant bytes first), returns the result in dst
 ;--------------------------------------------------------------------------
 movlx32 macro   lit,dst          ;dst := lit
+
         movlw   (lit >> .24) & 0xff
         movwf   dst
         movlw   (lit >> .16) & 0xff
@@ -543,16 +547,33 @@ movlx32 macro   lit,dst          ;dst := lit
         movwf   dst+2
         movlw   lit & 0xff
         movwf   dst+3
+
         endm
 
+
 movlx16 macro   lit,dst
+
         movlw   (lit >> 8) & 0xff
         movwf   dst
         movlw   lit & 0ffh
         movwf   dst+1
+
         endm
 
-;**********************************************************************
+;**************************************************************************
+;                                                                         *
+; Macros end                                                              *
+;                                                                         *
+;**************************************************************************
+
+
+
+;**************************************************************************
+;                                                                         *
+; Program start                                                           *
+;                                                                         *
+;**************************************************************************
+
   ORG   0x000                   ; processor reset vector
         goto    MainInit        ; go to beginning of program
 ; (begin of ROM is too precious to waste for ordinary code, see below...)
@@ -669,7 +690,8 @@ Digit2MuxValue:     ;
 ;   Modified for 32-bit arithmetic by Wolfgang Buescher (2004).
 ;--------------------------------------------------------------------------
 TensTable  addwf PCL,f
-        cquad   .10000000  ; 10 million is sufficient for the counter itself
+        cquad   .100000000  ; 100 million is sufficient for the counter itself
+        cquad   .10000000
         cquad   .1000000
         cquad   .100000
         cquad   .10000
@@ -1138,7 +1160,7 @@ ShowInt32_FSR   ; Convert <*FSR> (32 bit integer) to 8 BCD-digits ...
 ; Convert <freq> into BCD and show it on the display .
 ;  Input :  freq, 32-bit integer.  CONTENTS OF <freq> will be lost !!
 ;--------------------------------------------------------------------------
-CvtAndDisplayFreq  ; Convert <freq>(32 bit integer) to 8 BCD-digits ...
+CvtAndDisplayFreq  ; Convert <freq>(32 bit integer) to 9 BCD-digits ...
         ;
         movfw   pmodeflag   ; check special modes
         andlw   b'11110000' ; any of bits 7..4 set -> no Z flag -> NoRound
@@ -1231,7 +1253,7 @@ conv2   ; Loop to repeatedly subtract divi from freq (32-bit subtract)
 
 conv3   add32   freq,divi               ; freq := freq+divi;  ready for next digit
         incf    FSR , f                 ; step to next decimal digit
-        movlw   8*4                     ; 8 x 4-byte entries in TensTable
+        movlw   9*4                     ; 9 x 4-byte entries in TensTable
         subwf   tens_index,w
         BNZ     conv1                   ; loop until end of table
 
@@ -1240,27 +1262,28 @@ conv3   add32   freq,divi               ; freq := freq+divi;  ready for next dig
 ;--------------------------------------------------------------------------
 ;
 ; Display the decimal digits according to the following rules
-; input: decimal values in digit_0 (leftmost) .. digit_7 (rightmost); digit_8 = 0
+; input: decimal values in digit_0 (leftmost) .. digit_8 (rightmost); digit_9 = 0
 ;
 ; PMODE_ON == 1 + VERY_LOW == 1: very low freq period measurements with 3 decimals
-; 01234567
-; 0000Abcd =>  A,bcd, ' 1.000' to ' 9.999' Hz  Hz =  blinking points at digit 4 and 7
-; 000ABcde => AB,cde, '10.000' to '60.999' Hz  Hz =  blinking points at digit 4 and 7
+; 012345678
+; 00000Abcd =>  A,bcd, ' 1.000' to ' 9.999' Hz  Hz =  blinking points at digit 5 and 8
+; 0000ABcde => AB,cde, '10.000' to '60.999' Hz  Hz =  blinking points at digit 5 and 8
 ;
 ; PMODE_ON == 1: low freq period measurements with 2 decimals
-; 01234567
-; 00000Abc =>   A,bc, '  1.00' to '  9.99' Hz  Hz =  blinking points at digit 5 and 7
-; 0000ABcd =>  AB,cd, ' 10.00' to ' 99.99' Hz  Hz =  blinking points at digit 5 and 7
-; 000ABCde => ABC,de, '100.00' to '249.99' Hz  Hz =  blinking points at digit 5 and 7
+; 012345678
+; 000000Abc =>   A,bc, '  1.00' to '  9.99' Hz  Hz =  blinking points at digit 6 and 8
+; 00000ABcd =>  AB,cd, ' 10.00' to ' 99.99' Hz  Hz =  blinking points at digit 6 and 8
+; 0000ABCde => ABC,de, '100.00' to '249.99' Hz  Hz =  blinking points at digit 6 and 8
 ;
 ; PMODE_ON = 0: freq counter measurements
-; 01234567
-; 00000ABC =>  0,ABC  ' 0.250' to ' 0.999' KHz     kHz = blinking point at digit 4
-; 0000ABCD =>  A,BCD  ' 1.000' to ' 9.999' KHz     kHz = blinking point at digit 4
-; 000ABCDE => AB,CDE  '10.000' to '99.999' KHz     kHz = blinking point at digit 4
-; 00ABCDEF => ABC,DE  '100.00' to '999.99' KHz  100KHz = blinking point at digit 4
-; 0ABCDEFG => A.BCDE  '1.0000' to '9.9999' Mhz    1MHz = steady point at digit 1
-; ABCDEFGH => AB.CDE  '10.000' to '99.999' Mhz   10MHz = steady point at digit 1
+; 012345678
+; 000000ABC =>  0,ABC  ' 0.250' to ' 0.999' KHz     kHz = blinking point at digit 5
+; 00000ABCD =>  A,BCD  ' 1.000' to ' 9.999' KHz     kHz = blinking point at digit 5
+; 0000ABCDE => AB,CDE  '10.000' to '99.999' KHz     kHz = blinking point at digit 5
+; 000ABCDEF => ABC,DE  '100.00' to '999.99' KHz  100KHz = blinking point at digit 5
+; 00ABCDEFG => A.BCDE  '1.0000' to '9.9999' Mhz    1MHz = steady point at digit 2
+; 0ABCDEFGH => AB.CDE  '10.000' to '99.999' Mhz   10MHz = steady point at digit 2
+; ABCDEFGHI => ABC.DE  '100.00' to '999.99' Mhz  100MHz = steady point at digit 2
 ; , = blinking point
 ; . = steady point
 ;
@@ -1272,7 +1295,7 @@ display_freq:
 
         ; Display routine for very low frequencies with three decimals up to "99.999 Hz" (theoretical):
 display_f_3dec:
-        movlw   digit_3                 ; find the first significant digit starting from d3 ..
+        movlw   digit_4                 ; find the first significant digit starting from d4 ..
         movwf   FSR                     ; .. by stepping over leading zeroes
         tstf    INDF                    ; INDF = *(FSR) in "C" syntax, FSR points to 'digits'
         BNZ     d_f3d1                  ; 10-Hz-digit non-zero, show frequency in Hz [XX.xxx]
@@ -1281,13 +1304,13 @@ display_f_3dec:
                                         ; and show frequency in Hz [ X.xxx]
 d_f3d1: btfss   blinker, 0              ; check the blink flag (bit 0) for the Hz-points
         goto    display
-        bsf     digit_4, 7              ; set two blinking points around the decimals ..
-        bsf     digit_7, 7              ; .. indicating Hz
+        bsf     digit_5, 7              ; set two blinking points around the decimals ..
+        bsf     digit_8, 7              ; .. indicating Hz
         goto    display                 ; and show the result right aligned
 
         ; Display routine for frequencies with two decimals up to "999.99 Hz" (theoretical):
 display_f_2dec:
-        movlw   digit_3                 ; find the first significant digit starting from d3 ..
+        movlw   digit_4                 ; find the first significant digit starting from d4 ..
         movwf   FSR                     ; .. by stepping over leading zeroes
         tstf    INDF                    ; INDF = *(FSR) in "C" syntax, FSR points to 'digits'
         BNZ     d_f2d1                  ; 100-Hz-digit non-zero, show frequency in Hz [XXX.xx]
@@ -1300,11 +1323,11 @@ display_f_2dec:
                                         ; and show frequency in Hz [  X.xx]
 d_f2d1: btfss   blinker, 0              ; ifnot blink flag (bit 0) for the Hz-points
         goto    display_5_lowest        ; .. show the result right aligned
-        bsf     digit_5, 7              ; set two blinking points around the decimals ..
-        bsf     digit_7, 7              ; .. indicating Hz
+        bsf     digit_6, 7              ; set two blinking points around the decimals ..
+        bsf     digit_8, 7              ; .. indicating Hz
         goto    display_5_lowest        ; and show the result right aligned
 
-        ; Display routine for integer frequencies from 1 Hz up to 99.999 MHz (theoretical):
+        ; Display routine for integer frequencies from 1 Hz up to 999.99 MHz (theoretical):
         ; (do NOT insert the decimal point yet,
         ;   it would disturb the blanking of LEADING zeroes )
 display_f_int:
@@ -1316,44 +1339,49 @@ display_f_int:
         movlw   digits                  ; else find the first significant digit ..
         movwf   FSR                     ; .. by stepping over leading zeroes
         tstf    INDF                    ; INDF = *(FSR) in "C" syntax, FSR points to 'digits'
-        BNZ     displ_d0                ; 10-MHz-digit non-zero, show frequency in MHz [XX.XXX]
-        incf    FSR, f                  ; otherwise skip 1st digit (the 10-MHz place)
+        BNZ     displ_d0                ; 100-MHz-digit non-zero, show frequency in MHz [XXX.XX]
+        incf    FSR, f                  ; otherwise skip 1st digit (the 100-MHz place)
+        tstf    INDF                    ; INDF = *(FSR) in "C" syntax, FSR points to 'digits'
+        BNZ     displ_d1                ; 10-MHz-digit non-zero, show frequency in MHz [XX.XXX]
+        incf    FSR, f                  ; otherwise skip 2nd digit (the 10-MHz place)
         tstf    INDF
-        BNZ     displ_d1                ; 1-MHz-digit non-zero, show frequency in MHz [X.XXXX]
-        incf    FSR, f                  ; otherwise skip 2nd digit (the 1-MHz place)
+        BNZ     displ_d2                ; 1-MHz-digit non-zero, show frequency in MHz [X.XXXX]
+        incf    FSR, f                  ; otherwise skip 3rd digit (the 1-MHz place)
         tstf    INDF
-        BNZ     displ_d2                ; 100-kHz-digit non-zero, show frequency in kHz [XXX:XX]
-        incf    FSR  ,  f               ; otherwise skip 3rd digit (the 100-kHz place)
+        BNZ     displ_d3                ; 100-kHz-digit non-zero, show frequency in kHz [XXX:XX]
+        incf    FSR  ,  f               ; otherwise skip 4th digit (the 100-kHz place)
         tstf    INDF
-        BNZ     displ_d3                ; 10-kHz-digit non-zero, show frequency in kHz [XX:XXX]
+        BNZ     displ_d4                ; 10-kHz-digit non-zero, show frequency in kHz [XX:XXX]
                                         ; otherwise show the frequency in kHz [ X:XXX] or [ 0:XXX]
-displ_d4:       ; 250 Hz .. 9999 Hz, FSR points at digit_3 (10-kHz-digit)
+displ_d5:       ; 250 Hz .. 9999 Hz, FSR points at digit_3 (10-kHz-digit)
         btfsc   blinker, 0              ; check the blink flag (bit 0) for the kHz-point
-        bsf     digit_4, 7              ; blink the decimal point indicating kHz
+        bsf     digit_5, 7              ; blink the decimal point indicating kHz
         movlw   BLANK                   ; show right aligned as [ 0:XXX] or [ X:XXX]
         goto    display_w
 
-displ_d3:       ;  10000 ..  99999
-displ_d2:       ; 100000 .. 999999
+displ_d4:       ;  10000 ..  99999
+displ_d3:       ; 100000 .. 999999
         ; left aligned with BLINKING POINT to indicate the kilohertz-digit
         btfsc   blinker, 0              ; check the blink flag (bit 0) for the kHz-point
-        bsf     digit_4, 7              ; blink the decimal point indicating kHz
+        bsf     digit_5, 7              ; blink the decimal point indicating kHz
         goto    display
 
+displ_d2:
 displ_d1:
-displ_d0:       ; left aligned with STEADY POINT at megahertz-digit
-        bsf     digit_1, 7              ; set the decimal point indicating MHz
+displ_d0:
+        ; left aligned with STEADY POINT at megahertz-digit
+        bsf     digit_2, 7              ; set the decimal point indicating MHz
         goto    display
 
 display_calibrate:                      ; cal. mode: blink two left dots alternating
         bcf     CALIBRATE               ; clear CALIBRATE mode
         btfss   blinker, 0              ; if blink flag clear
-        bsf     digit_3, 7              ; .. set topmost dot
+        bsf     digit_4, 7              ; .. set topmost dot
         btfsc   blinker, 0              ; if blink flag set
-        bsf     digit_4, 7              ; .. set 2nd dot
+        bsf     digit_5, 7              ; .. set 2nd dot
 
 display_5_lowest:                       ; show 5 lowest digits
-        movlw   digit_3
+        movlw   digit_4                 ; digits 45678
         movwf   FSR
 display:  ; Show the FIVE digits beginning at INDF = *(FSR) on the LED display...
         movfw   INDF                    ; convert the five digits to LED data
@@ -1422,7 +1450,7 @@ MainInit:
         btfsc   IOP_SWITCH              ; if switch is high (not pressed) ..
         goto    MainLoop                ; .. save and go
         bsf     EVENT_ON
-        movlw   CHAR_C                  ; prepare text "count"
+        movlw   CHAR_C                  ; prepare text "Count"
         call    conv_char0
         movlw   CHAR_o
         call    conv_char1
@@ -1437,7 +1465,7 @@ sw_wait:
         movlx16 COUNTMODE_LOOPS, gatecnt ; 0.1 second display
         call    count_pulses            ; some delay to show the test pattern
         movlw   _DP
-        xorwf   display4                ; blink rightnost decimal point
+        xorwf   display4,f              ; blink rightnost decimal point
         btfss   IOP_SWITCH              ; if switch is still pressed ..
         goto    sw_wait                 ; .. wait
 
@@ -1496,8 +1524,8 @@ RANGE_DET_LOOPS equ  CLOCK/(.25*CYCLES) ; number of gate-time loops to detect th
 
 
         ; Load the default (soft-)counters for the GATE TIME.
-        ; Most measuring ranges use a 1/4 second gate time !
-        movlx16 GATE_TIME_LOOPS/.4, gatecnt  ; gate time
+        ; Most measuring ranges use a 1/2 second gate time !
+        movlx16 GATE_TIME_LOOPS/.2, gatecnt  ; gate time
 
 
         ; Increment the "blinker" once every 0.25 seconds.
@@ -1530,11 +1558,11 @@ RANGE_DET_LOOPS equ  CLOCK/(.25*CYCLES) ; number of gate-time loops to detect th
         ; (2)    256..511     ..  817 KHz   2    1   second  X.XXXX    2 Hz  1
         ; (2)    512..1023    ..  1.6 MHz   2    1   second  X.XXXX    2 Hz  1
         ; (4)   1024..2047    ..  3.2 MHz   2    1/2 second  X.XXXX    4 Hz  1
-        ; (8)   2048..4095    ..  6.5 MHz   2    1/4 second  X.XXXX    8 Hz  1
-        ; (16)  4096..8191    ..   13 MHz   4    1/4 second  X.XXXX   16 Hz  1
-        ; (32)  8192..16383   ..   26 MHz   8    1/4 second  X.XXXX   32 Hz  1
-        ; (64) 16384..32767   ..   52 MHz  16    1/4 second  XX.XXX   64 Hz  1
-        ; (64) 32768..40000   ..   64 MHz  16    1/4 second  XX.XXX   64 Hz  1
+        ; (8)   2048..4095    ..  6.5 MHz   4    1/2 second  X.XXXX    8 Hz  1
+        ; (16)  4096..8191    ..   13 MHz   8    1/2 second  X.XXXX   16 Hz  1
+        ; (32)  8192..16383   ..   26 MHz  16    1/2 second  X.XXXX   32 Hz  1
+        ; (64) 16384..32767   ..   52 MHz  32    1/2 second  XX.XXX   64 Hz  1
+        ; (64) 32768..40000   ..   64 MHz  32    1/2 second  XX.XXX   64 Hz  1
         ;
         movfw   freq_ml         ; first look at bits 15..8 of the 'test count' result
         andlw   b'11000000'     ; any of bits 15..14 set (>=16384, 26 MHz..) -> no Z flag -> range 64
@@ -1588,41 +1616,41 @@ Range2:
 Range4:
         btfss   IOP_SWITCH              ; if switch is low (pressed) ..
         goto    Range1_zoom             ; .. calibration zoom
-        ; async prescaler /2 , gate time = 1/2 second
+        ; async prescaler /2 , gate time = default (1/2 second)
         movlw   PSC_DIV_BY_2            ; let the prescaler divide by 2 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
         ; Load the GATE TIMER (as count of loops) for this measuring range.
-        movlx16 GATE_TIME_LOOPS/.2, gatecnt ; 1/2 second gate time
+        ; movlx16 GATE_TIME_LOOPS/.2, gatecnt ; 1/2 second gate time
         ; Load the count of "left shifts" to compensate gate time + prescaler :
         movlw   .2  ; multiply by 4 (=2^2) later to compensate prescaling (1/2) * gate time (1/2 s)
         goto    GoMeasure
 
 Range8:
-        ; async prescaler /2, gate time = default (1/4 second)
-        movlw   PSC_DIV_BY_2            ; let the prescaler divide by 2 while MEASURING...
+        ; async prescaler /4, gate time = default (1/2 second)
+        movlw   PSC_DIV_BY_4            ; let the prescaler divide by 4 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
-        movlw   .3  ; multiply by 8 (=2^3) later to compensate prescaling (1/2) * gate time (1/4 s)
+        movlw   .3  ; multiply by 8 (=2^3) later to compensate prescaling (1/4) * gate time (1/2 s)
         goto    GoMeasure
 
 Range16:
-        ; async prescaler /4, gate time = default (1/4 second)
-        movlw   PSC_DIV_BY_4            ; let the prescaler divide by 4 while MEASURING...
+        ; async prescaler /8, gate time = default (1/2 second)
+        movlw   PSC_DIV_BY_8            ; let the prescaler divide by 8 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
-        movlw   .4  ; multiply by 16 (=2^4) later to compensate prescaling (1/4) * gate time (1/4 s)
+        movlw   .4  ; multiply by 16 (=2^4) later to compensate prescaling (1/8) * gate time (1/2 s)
         goto    GoMeasure
 
 Range32:
-        ; async prescaler /8, gate time = default (1/4 second)
-        movlw   PSC_DIV_BY_8            ; let the prescaler divide by 8 while MEASURING...
+        ; async prescaler /16, gate time = default (1/2 second)
+        movlw   PSC_DIV_BY_16            ; let the prescaler divide by 16 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
-        movlw   .5  ; multiply by 32 (=2^5) later to compensate prescaling (1/8) * gate time (1/4 s)
+        movlw   .5  ; multiply by 32 (=2^5) later to compensate prescaling (1/16) * gate time (1/2 s)
         goto    GoMeasure
 
 Range64:
-        ; async prescaler /16, gate time = default (1/4 second)
-        movlw   PSC_DIV_BY_16           ; let the prescaler divide by 16 while MEASURING...
+        ; async prescaler /32, gate time = default (1/2 second)
+        movlw   PSC_DIV_BY_32           ; let the prescaler divide by 32 while MEASURING...
         call    SetPrescaler            ; safely write <W> into option register
-        movlw   .6  ; multiply by 64 (=2^6) later to compensate prescaling (1/16) * gate time (1/4 s)
+        movlw   .6  ; multiply by 64 (=2^6) later to compensate prescaling (1/32) * gate time (1/2 s)
 
 GoMeasure:
         movwf   adjust_shifts           ; save the number of "arithmetic left shifts" for later
@@ -1757,13 +1785,13 @@ P_Conv:                         ; come here if f < 256 Hz
 
 P_Conv_3
         ; calculate frequency with 3 decimal digits
-        movlx32 PER2FREQ3, freq2                ; conversion for resolution 1 mHz
+        movlx32 PER2FREQ3, freq2 ; conversion for resolution 1 mHz
         goto    P_Conv_end
 
 P_Conv_2
         ; calculate frequency with 2 decimals digits
-        bcf     VERY_LOW                        ; exit very low mode
-        movlx32 PER2FREQ2, freq2                ; conversion for resolution 10 mHz
+        bcf     VERY_LOW         ; exit very low mode
+        movlx32 PER2FREQ2, freq2 ; conversion for resolution 10 mHz
 
 P_Conv_end:
         clrf    freq_hi         ; we re-use the frequency buffer for the 32-bit result

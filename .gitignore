@@ -2,6 +2,8 @@ orig
 *.orig
 *.new
 *.old
+*.diff
 *.cod
 *.lst
 *~
+*.kate-swp
