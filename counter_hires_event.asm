@@ -375,7 +375,8 @@ table   macro label                     ; define lookup table
 label   addwf PCL,f  ; caution: this is 'PCL' only, cannot add to the full 'PC' in a PIC !
         endm
 
-
+#if 0
+; currently unused - replaced by the smaller/faster x32 macros
 ;--------------------------------------------------------------------------
 ; add with carry - adds the w register and the carry flag to the file
 ; register reg, returns the result in <reg> with the carry flag set if overflow
@@ -456,7 +457,6 @@ sub32   macro op1,op2                 ; op1 := op1 - op2
 
         endm
 
-
 ;--------------------------------------------------------------------------
 ; MACRO to negate a 32-bit value  (  op := 0 - op ) .
 ;--------------------------------------------------------------------------
@@ -481,11 +481,12 @@ neg32   macro op                      ; op1 := 0 - op2
 neg_done
         endm
 
+#endif
 
 ;--------------------------------------------------------------------------
-; MACRO to perform 32-bit subtraction - subtracts the four bytes at op2
-; from the four bytes at op1 (most significant bytes first), returns the
-; result in op1 with op2 unchanged and the no carry flag set if underflow
+; MACRO to perform 32-bit subtraction - subtracts the four bytes at src
+; from the four bytes at dst (most significant bytes first), returns the
+; result in dst with src unchanged and the no carry flag set if underflow
 ;--------------------------------------------------------------------------
 
 subx32  macro src,dst          ;dst := dst - src
@@ -511,6 +512,12 @@ subx32  macro src,dst          ;dst := dst - src
         endm
 
 
+;--------------------------------------------------------------------------
+; MACRO to perform 32-bit addition - adds the four bytes at src
+; to the four bytes at dst (most significant bytes first), returns the
+; result in dst with src unchanged and the no carry flag set if underflow
+;--------------------------------------------------------------------------
+
 addx32  macro src,dst          ;dst := dst + src
 
         bcf STATUS, C
@@ -533,10 +540,12 @@ addx32  macro src,dst          ;dst := dst + src
 
         endm
 
+
 ;--------------------------------------------------------------------------
 ; MACROs to move a 16bit and 32bit literal into the two/four bytes at dst
 ; (most significant bytes first), returns the result in dst
 ;--------------------------------------------------------------------------
+
 movlx32 macro   lit,dst          ;dst := lit
 
         movlw   (lit >> .24) & 0xff
@@ -559,6 +568,7 @@ movlx16 macro   lit,dst
         movwf   dst+1
 
         endm
+
 
 ;**************************************************************************
 ;                                                                         *
@@ -677,11 +687,11 @@ Digit2MuxValue:     ;
         ; Note: If the program counter is affected, a command requires to instruction cycles (=8 osc cycles)
 
 ; muliplexer values (5 digits, COMMON CATHODE) :
-        retlw b'11110111'        ; most significant digit is on   PA3 (!)
-        retlw b'11111011'        ; next less significant dig. on  PA2 (!!)
-        retlw b'11111110'        ; next less significant dig. on  PA0 (!!)
-        retlw b'11111101'        ; 4th (sometimes the last) digit PA1 (!)
-        retlw b'11111111'        ; 5th (OPTIONAL) least significant digit = NOT (PA3+PA2+PA1+PA0)
+        retlw b'11110111'        ; 1st most significant digit is on  PA3 (!)
+        retlw b'11111011'        ; 2nd next less significant dig. on PA2 (!)
+        retlw b'11111110'        ; 3rd next less significant dig. on PA0 (!!)
+        retlw b'11111101'        ; 4th next less significant dig. on PA1 (!!)
+        retlw b'11111111'        ; 5th least significant digit = NOT (PA3+PA2+PA1+PA0)
 
 
 ;--------------------------------------------------------------------------
@@ -772,68 +782,6 @@ PrescalerOff:  ; turn the prescaler for TMR0 "off"
         errorlevel +302 ; Enable banking message again
         retlw 0
 
-#if 0
-;--------------------------------------------------------------------------
-; Power-saving subroutine: Puts the PIC to sleep for ROUGHLY 100 milliseconds .
-;  - crystal oscillator turned OFF during this phase
-;  - only the internal RC-oscillator for the watchdog keeps running
-;  - expiration of watchdog during sleep does NOT reset the PIC,
-;    only wakes it up again so normal operation may resume
-;  - LED display will be off during this time
-;--------------------------------------------------------------------------
-Sleep150ms:  ; go to sleep for approx. 150 milliseconds, and then RETURN (no reset)
-   ; Details on the PIC's watchdog timer (from PIC16F628 datasheet) :
-   ; > The WDT has a nominal timeout period of 18 ms (with
-   ; > no prescaler). The timeout periods vary with temperature,
-   ; > VDD and process variations from part to part (see
-   ; > DC specs).
-   ; > The Watchdog Timer is a free running on-chip RC oscillator which does
-   ; > not require any external components. This RC oscillator is separate
-   ; > from the ER oscillator of the CLKIN pin. That means that the WDT will run,
-   ; > even if the clock on the OSC1 and OSC2 pins of the device has been stopped,
-   ; > for example, by execution of a SLEEP instruction.
-   ; > During normal operation, a WDT timeout generates a device RESET.
-   ; > If the device is in SLEEP mode, a WDT timeout causes the device to wake-up
-   ; > and continue with normal operation.
-   ; > The WDT can be permanently disabled by programming the configuration bit
-   ; > WDTE as clear .
-   ; In other words, to use the watchdog-timer for "temporary sleep" here ,
-   ; it must be ENABLED in the configuration word when programming the PIC.
-   ;  (because its not possible to turn it on via software if it's not on).
-   ; But once the watchdog timer is ON, it must be FED periodically otherwise
-   ; it will reset the PIC during normal operation !
-   ; Here (in the frequency counter), the prescaler remains assigned to timer0
-   ; so the watchdog interval is ~ 18 milliseconds (+/-, RC-oscillator) .
-   ; > The CLRWDT and SLEEP instructions clear the WDT and the postscaler,
-   ; > if assigned to the WDT, and prevent it from timing out and generating
-   ; >  a device RESET. The TO bit in the STATUS register will be cleared upon
-   ; > a Watchdog Timer timeout.
-; display with COMMON CATHODE :
-        movlw 0x00                    ; segment drivers LOW to turn off
-
-        movwf LEDS_PORT               ; turn LED segments off
-        ; Note: The global interrupt-enable flag (GIE) is off in this application !
-        ; To avoid unintended wake-up on 'interrupt' (port level change),
-        ; disable all interrupt-SOURCES: Clear T0IE,INTE,RBIE,PEIE too :
-        clrf  INTCON                  ; disable all interrupts during SLEEP mode
-        clrwdt                        ; clear watchdog timer
-        clrf  TMR0                    ; clear timer 0 AND PRESCALER(!)
-        errorlevel -302 ; Turn off banking message for the next few instructions..
-        bsf   STATUS, RP0            ;! setting RP0 enables access to OPTION reg
-             ; option register is in bank1. i know. thanks for the warning.
-        movlw b'00101011'            ;! assign PS to WDT; divide by 8 FOR WDT(!)
-        movwf OPTION_REG             ;! ex: "option" command (yucc)
-        bcf   STATUS, RP0            ;! clearing RP0 for normal register access
-        errorlevel +302 ; Enable banking message again
-        sleep                         ; sleep for approx 18 ms (one watchdog interval)
-        ; The SLEEP command clears the Watchdog Timer and stops the main oscillator.
-        ; Only the internal watchdog timer keeps running.
-        ; The WDT is is also cleared when the device wakes-up from SLEEP,
-        ; regardless of the source of wake-up, so no need for 'clrwdt' here !
-        nop    ; arrived here, slept for ~ 8 times 18 milliseconds
-        return ; end  Sleep150ms
-#endif
-
 
 ;--------------------------------------------------------------------------
 ; Convert a character into LEDs data for the 7-segment displays, fed with
@@ -886,9 +834,9 @@ ClearDisplay:
 
 
 ;--------------------------------------------------------------------------
-; Count pulses, fed with the number of loop iterations for the gate time .
-;               WHILE counting, the multiplexed LED display is updated .
-;               Watchdog is fed in this loop !
+; Count pulses, fed with the number of loop iterations for the gate time.
+;               WHILE counting, the multiplexed LED display is updated.
+;               Watchdog is fed in this loop!
 ; Input:    Count of gate-time-loops in 'gatecnt_hi'+'gatecnt_lo' (16 bit).
 ; Returns:  The number of pulses in 20us increments
 ;           The number of periods measured (in pcnt)               (added TheHWcave )
@@ -932,17 +880,15 @@ count0:
 ; --------------- start of critial timing loop >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 ; The following timing loop must take a well-defined time in total per
-; iteration, usually 50 (or 20) microseconds, which can be precisely achieved
-; with a 4-MHz-crystal (or 20 MHz for variant 2+3) .
-; This gives a basic delay for the frequency counter's gate time .
+; iteration, usually 20 microseconds, which can be precisely achieved
+; with a 20-MHz-crystal.
+; This gives a basic delay for the frequency counter's gate time.
 ;    The frequency at the input of TIMER 0 (not the prescaler)
 ;    can not exceed f_crystal / 4,
 ;    and every HIGH->LOW transition of bit7 in TIMER0 must be polled here.
 ;  This is safe because ..
-;    Variant 1:  With a 4-MHz-crystal, Timer0 can count up to 1 MHz input,
-;                MSB toggles every (128/1MHz) = 128 us, polled every 50us  -> ok.
-;    Variant 2:  With a 20-MHz-crystal, Timer0 can count up to 4 (not 5?!) MHz input,
-;                MSB toggles every (128/4MHz) = 32 us, polled every 20us -> ok.
+;    With a 20-MHz-crystal, Timer0 can count up to 4 MHz input,
+;    MSB toggles every (128/4MHz) = 32 us, polled every 20us -> ok.
 
 ;  The numbers in square brackets below are the INSTRUCTION NUMBER within the loop.
 ;  (not the count of oscillator cycles for a single command, which is always 4).
@@ -970,7 +916,7 @@ count1  movfw   disp_index      ; [1] get the current digit number (disp_index =
         clrf    disp_index      ; [23] if C=0 (disp_index>4) then disp_index=0
 
 ; the following fragments of code always take the same number of clock
-; cycles to execute, irrespective of whether the skips take place or not .
+; cycles to execute, irrespective of whether the skips take place or not.
 ; Here still in 'count_pulses'.
 
         movfw   TMR0            ; [24] read least significant byte of
@@ -986,11 +932,11 @@ count1  movfw   disp_index      ; [1] get the current digit number (disp_index =
         addwf   freq_ml,f       ; [31] increment high bytes of pulse counter
         skpnc                   ; [32] if low byte rolled over
         incf    freq_mh,f       ; [33] (mh = "medium high byte" of counter)
-                                ; NOTE: we are not modifying freq_hi here !
+                                ; NOTE: we are not modifying freq_hi here!
                                 ;       Bits 31..24 may be used later when multiplying with some factor
-                                ;       (2^n) to compensate for the ASYNCHRON PRESCALER !
+                                ;       (2^n) to compensate for the ASYNCHRON PRESCALER!
 
-        btfsc   freq_mh,7       ; [34] overflow (freq > 7fffffh) ?
+        btfsc   freq_mh,7       ; [34] overflow (freq > 7fffffh)?
         goto    count3          ; [35+1] stop if yes
 
         nop                     ; [36]
@@ -1007,7 +953,7 @@ count1  movfw   disp_index      ; [1] get the current digit number (disp_index =
         ; 100 instruction cycles per loop
         ; (f_xtal=20 MHz, t_loop=20us, t_instr=4/20MHz=0.2us)
         ;
-        clrwdt                  ; [42] (ex: nop, but since 2006-05-28 the dog must be fed !)
+        clrwdt                  ; [42] (ex: nop, but since 2006-05-28 the dog must be fed!)
         ;
 
         ; TheHWcave:	Measure period(s) in 20 uS units
@@ -1015,7 +961,7 @@ count1  movfw   disp_index      ; [1] get the current digit number (disp_index =
         ;               at the previous loop, so we can use this to detect when the counter
         ;               has changed. Because we are only interested in very low frequencies
         ;               we can safely detect a single increment and there will be lots of loops
-        ;               with no change at all.  The loop count (gatecnt) is counting down
+        ;               with no change at all. The loop count (gatecnt) is counting down
         ;               from 50000 (=1 second) and each count represents 20 us
         ;
         ;	        The idea is that if freq_lo changes to 1 we take copy of the gatecnt in pstart
@@ -1246,12 +1192,12 @@ conv1   ; Loop for ALL POWERS OF TEN in the lookup table..
 
 conv2   ; Loop to repeatedly subtract divi from freq (32-bit subtract)
         ;         until underflow while incrementing the decimal digit.
-        sub32   freq,divi               ; freq := freq - divi  (with divi = 10 power N)
+        subx32  divi,freq               ; freq := freq - divi  (with divi = 10 power N)
         BNC     conv3                   ;
         incf    INDF , f                ;    The RESULT will be written back to freq,
         goto    conv2                   ;    in other words 'freq' will be lost !
 
-conv3   add32   freq,divi               ; freq := freq+divi;  ready for next digit
+conv3   addx32  divi,freq               ; freq := freq+divi;  ready for next digit
         incf    FSR , f                 ; step to next decimal digit
         movlw   9*4                     ; 9 x 4-byte entries in TensTable
         subwf   tens_index,w
