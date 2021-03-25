@@ -1014,7 +1014,7 @@ P_Measure:
         nop ;andlw   0x07            ; [58]
         nop ;btfss   STATUS, Z       ; [59]
         nop ;movlw   .60             ; [60]           RPM: pre-load W with 60   freq: W is already 0
-        addlw   .80             ; [61]   add 80: RPM  W is 60+80=140       freq: W is 0+80 = 80
+        movlw   .80 ;addlw   .80     ; [61]   add 80: RPM  W is 60+80=140       freq: W is 0+80 = 80
         subwf   pcnt,w          ; [62]
         btfsc   STATUS, C       ; [63]
         goto    P_done          ; [64+1]  stop if pcnt >= 80 (freq) or >= 140 (rpm)
@@ -1745,15 +1745,17 @@ P_Conv_end:
         clrf    freq_ml
         clrf    freq_lo
 
-P_Mul:  addx32  freq2, freq ; freq = freq + freq2
+P_Mul:  ; freq := pcnt * freq2 (8bit * 32bit -> 32bit)
+        addx32  freq2, freq ; freq = freq + freq2
         decf    pcnt,f
         btfss   STATUS, Z
         goto    P_Mul
+        ; P_Mul end
 
-        ; TheHWcave:  This section divides the adjusted conversion factor by the
-        ;             sum of the periods. This is a 32-bit divided by 16-bit
+        ; TheHWcave:  This section divides the adjusted conversion factor "freq" by the
+        ;             sum of the periods "period". This is a 32-bit divided by 16-bit
         ;             operation using repeated 32-bit subtraction. The result is
-        ;             a 24-bit number which is the desired frequency (in millihertz).
+        ;             a 24-bit number "freq" which is the desired frequency (in millihertz).
         ;
         ;             This calculation takes so much time that the watchdog timer
         ;             would trigger and because the display multiplexing is stopped
@@ -1773,15 +1775,15 @@ P_Mul:  addx32  freq2, freq ; freq = freq + freq2
         clrf    pdiv_ml
         clrf    pdiv_lo
 P_Div:  call    RefreshDisplay
-        subx32  freq2, freq  ; freq = freq - freq2
-        btfss   STATUS, C
-        goto    P_DivEnd
-        incf    pdiv_lo,f
+        subx32  freq2, freq ; freq = freq - freq2
+        btfss   STATUS, C   ;
+        goto    P_DivEnd    ; C = 0 -> ready
+        incf    pdiv_lo,f   ; incx24
         btfsc   STATUS, Z
         incf    pdiv_ml,f
         btfsc   STATUS, Z
-        incf  pdiv_mh,f
-        goto P_Div
+        incf    pdiv_mh,f
+        goto    P_Div
 P_DivEnd: clrf  freq_hi  ; copy the result back into the freq_xx variable
         movfw   pdiv_mh  ;
         movwf   freq_mh  ;
@@ -1790,6 +1792,7 @@ P_DivEnd: clrf  freq_hi  ; copy the result back into the freq_xx variable
         movfw   pdiv_lo
         movwf   freq_lo
         bsf     PMODE_ON ; switch to display format XXX.XX Hz
+        ; Div end
 
 F_Hirange:
         call    CvtAndDisplayFreq       ; Convert <freq> into BCD and show it on the display

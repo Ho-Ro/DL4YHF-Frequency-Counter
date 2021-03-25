@@ -69,14 +69,14 @@ Frequencies < 61 Hz can optionally be displayed with three decimal digits e.g. `
 where `„` symbolises the flashing dots.
 To switch between two- and three-digits mode, press the key until the mode changes.
 The high-resolution mode is cancelled when the frequency rises above 61 Hz.
-The 61 Hz is a compromise between the conversion time and the possibility
-of measuring typical mains frequencies 50 Hz or 60 Hz precisely.
-A test measurement of the European mains frequency shows almost exact matching
+The 61 Hz is a compromise between the conversion time (increasing with frequency) and the possibility
+of measuring the typical mains frequencies 50 Hz or 60 Hz precisely.
+A test measurement of the European mains frequency shows almost exact mHz matching
 with the realtime values available online from https://www.netzfrequenzmessung.de/.
 
 ### Calibration "zoom"
 In the frequency range 100 .. 3200 kHz the display can be "zoomed" into a 1 Hz resolution
-by pressing the button. This selects temporarily a measurement range of 1 s gate time
+by holding down the button. This selects temporarily a measurement range of 1 s gate time
 without prescaler, yielding 1 Hz resolution,
 e.g.: a signal of exact 1012345 Hz normally shows `1.0123` with a steady dot, meaning 1.0123 MHz.
 Pressing the button changes the display to the 1 Hz resolution mode (that shows only the 5 low digits),
