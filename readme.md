@@ -10,6 +10,8 @@ built with [GNU gpasm](https://gputils.sourceforge.io/) under Linux and have add
 To build just type `make`. The resulting `counter_DL4YHF.hex` file is identical
 to Wolfgang's original version `DL4YHF/counter2.hex`. This can be tested with `make compare`.
 
+If you want to deep-dive into Wolfgang's clever coding, find out [how it works](HowItWorks.md).
+
 ## 2. counter.asm
 A 2nd variant [counter.asm](counter.asm) differs in three details:
 1. Underflow is shown with the zero in the rightmost (5th) digit.
@@ -85,6 +87,10 @@ giving `1„2„345`, where `„` symbolises the alternately flashing dots.
 This mode is intended to calibrate the quartz oscillator circuit; apply an exact 1 MHz signal
 (e.g. from a GPSDO) and adjust the variable capacitor until the display shows `0„0„000`.
 This will give you short term accuracy down to 1ppm.
+
+Remark: If the variable capacitor is mounted according to the silkscreen picture, the top side
+is connected to the hot side and the calibration is disturbed when you use a metal screwdriver.
+You should mount the capacitor 180° rotated to have top at GND.
 
 ### Event counting mode
 To enter the event counting mode, press the button during power-up
