@@ -9,6 +9,8 @@
 ;            "Crystal Oscillator Frequency Counter Tester" for ~10€ or $  *
 ;                                                                         *
 ; REVISIONS: (latest entry first)                                         *
+; 2021-03-27 - Ho-Ro:                                                     *
+;              Measure 256.0 Hz .. 999.9 Hz with 1 decimal                *
 ; 2021-03-11 - Ho-Ro:                                                     *
 ;              Increase display range to nnn MHz (measure up to 120 MHz)  *
 ; 2021-03-05 - Ho-Ro:                                                     *
@@ -248,6 +250,7 @@ LAMPTEST_LOOPS  equ  CLOCK/(2*CYCLES)   ; number of loops for a 0.5 SECOND lamp 
 COUNTMODE_LOOPS  equ  CLOCK/(10*CYCLES) ; number of delay loops for display "count" (0.1 sec)
 
 ONESECOND       equ 50000               ; 1 second in 20 us units
+PER2FREQ1       equ ONESECOND * 10      ; convert periods into HZ with 1 decimal point
 PER2FREQ2       equ ONESECOND * 100     ; convert periods into HZ with 2 decimal points
 PER2FREQ3       equ ONESECOND * 1000    ; convert periods into HZ with 3 decimal points
 
@@ -347,16 +350,18 @@ pdiv_mh         equ  0x57       ; used to store the final division result (bits 
 pdiv_ml         equ  0x58       ; ... bits 8..15
 pdiv_lo         equ  0x59       ; ... bits 0..7
 pmodeflag       equ  0x5A       ; 7 6 5 4 3 2 1 0
-                                ; 0 0 0 0 - - - -    = period measuring off (normal freq disp)
-                                ; 1 0 0 0 - - - -    = PMODE_ON: measure 10mHz
-                                ; 1 1 0 0 - - - -    = PMODE_ON + VERY_LOW: measure 1 mHz
-                                ; 0 0 1 0 - - - -    = CALIBRATE
-                                ; 0 0 0 1 - - - -    = EVENT_ON: count events, period measuring off
-#define PMODE_ON pmodeflag,7    ; 0 = off, 1 = on
-#define VERY_LOW pmodeflag,6    ; 0 = normal, 1 = measure 1e-3 Hz
-#define CALIBRATE pmodeflag,5   ; 0 = normal, 1 = measure 1 second and display lowest 5 digits
-#define EVENT_ON pmodeflag,4    ; 0 = off, 1 = on
-#define VERY_LOW_MASK b'01000000'
+                                ; 0 0 0 0 0 - - -    = period measuring off (normal freq disp)
+                                ; 1 0 0 0 0 - - -    = PMODE_ON: measure 10mHz
+                                ; 1 1 0 0 0 - - -    = PMODE_ON + DEC_3: measure 1 mHz
+                                ; 1 0 1 0 0 - - -    = PMODE_ON + DEC_1: measure 100 mHz
+                                ; 0 0 0 1 0 - - -    = CALIBRATE
+                                ; 0 0 0 0 1 - - -    = EVENT_ON: count events, period measuring off
+#define PMODE_ON pmodeflag, 7   ; 0 = off, 1 = on
+#define DEC_3 pmodeflag, 6      ; 0 = normal, 1 = measure 1 mHz
+#define DEC_1 pmodeflag, 5      ; 0 = normal, 1 = measure 1 mHz
+#define CALIBRATE pmodeflag, 4  ; 0 = normal, 1 = measure 1 second and display lowest 5 digits
+#define EVENT_ON pmodeflag, 3   ; 0 = off, 1 = on
+#define DEC_3_MASK b'01000000'
 
 ;**************************************************************************
 ;                                                                         *
@@ -510,6 +515,27 @@ SUBx32  macro src, dst          ;dst := dst - src
         btfss STATUS, C
         incfsz src+2,w
         subwf dst+2,f
+        movf src+1,w
+        btfss STATUS, C
+        incfsz src+1,w
+        subwf dst+1,f
+        movf src+0,w
+        btfss STATUS, C
+        incfsz src+0,w
+        subwf dst+0,f
+
+        endm
+
+
+;--------------------------------------------------------------------------
+; MACRO to perform 16-bit subtraction - subtracts the two bytes at src
+; from the two bytes at dst (most significant bytes first), returns the
+; result in dst with src unchanged and the no carry flag set if underflow
+;--------------------------------------------------------------------------
+
+SUBx16  macro src, dst          ;dst := dst - src
+
+        bsf STATUS, C
         movf src+1,w
         btfss STATUS, C
         incfsz src+1,w
@@ -1026,8 +1052,10 @@ P_Measure:
         nop ;andlw   0x07            ; [58]
         nop ;btfss   STATUS, Z       ; [59]
         nop ;movlw   .60             ; [60]           RPM: pre-load W with 60   freq: W is already 0
-        movlw   80 ;addlw   .80      ; [61]   add 80: RPM  W is 60+80=140       freq: W is 0+80 = 80
-        subwf   pcnt, w         ; [62]
+        ; HACK
+        ; movlw   80 ;addlw   .80      ; [61]   add 80: RPM  W is 60+80=140       freq: W is 0+80 = 80
+        movlw   255 ;addlw   .80      ; [61]   add 80: RPM  W is 60+80=140       freq: W is 0+80 = 80
+        subwf   pcnt, w         ; [62] W = pcnt - W
         btfsc   STATUS, C       ; [63]
         goto    P_done          ; [64+1]  stop if pcnt >= 80 (freq) or >= 140 (rpm)
 
@@ -1136,7 +1164,7 @@ CvtAndDisplayFreq  ; Convert <freq>(32 bit integer) to 9 BCD-digits ...
         ;       freq += 5;              // .. -> add 5 Hz
         ;
         MOVLx32 9999999, freq2
-        SUBx32  freq, freq2             ; freq2 = freq2 - freq; // C set when freq <= freq2 >= freq
+        SUBx32  freq, freq2             ; freq2 = freq2 - freq; // C set when freq <= freq2
         bc      check1M                 ; C = ( freq < 10M ) goto next check 1M
         clrf    freq2_hi
         clrf    freq2_mh
@@ -1222,7 +1250,7 @@ conv3   ADDx32  divi, freq              ; freq := freq+divi;  ready for next dig
 ; Display the decimal digits according to the following rules
 ; input: decimal values in digit_0 (leftmost) .. digit_8 (rightmost); digit_9 = 0
 ;
-; PMODE_ON == 1 + VERY_LOW == 1: very low freq period measurements with 3 decimals
+; PMODE_ON == 1 + DEC_3 == 1: very low freq period measurements with 3 decimals
 ; 012345678
 ; 00000Abcd =>  A,bcd, ' 1.000' to ' 9.999' Hz  Hz =  blinking points at digit 5 and 8
 ; 0000ABcde => AB,cde, '10.000' to '60.999' Hz  Hz =  blinking points at digit 5 and 8
@@ -1232,6 +1260,10 @@ conv3   ADDx32  divi, freq              ; freq := freq+divi;  ready for next dig
 ; 000000Abc =>   A,bc, '  1.00' to '  9.99' Hz  Hz =  blinking points at digit 6 and 8
 ; 00000ABcd =>  AB,cd, ' 10.00' to ' 99.99' Hz  Hz =  blinking points at digit 6 and 8
 ; 0000ABCde => ABC,de, '100.00' to '249.99' Hz  Hz =  blinking points at digit 6 and 8
+;
+; PMODE_ON == 1 + DEC_1 == 1: freq period measurements with 1 decimal
+; 012345678
+; 00000ABCd => ABC,d, ' 250.0' to ' 999.9' Hz  Hz =  blinking points at digit 7 and 8
 ;
 ; PMODE_ON = 0: freq counter measurements
 ; 012345678
@@ -1248,25 +1280,12 @@ conv3   ADDx32  divi, freq              ; freq := freq+divi;  ready for next dig
 display_freq:
         btfss   PMODE_ON                ; ifnot period measurement mode
         goto    display_f_int           ; .. go to normal display
-        btfss   VERY_LOW                ; ifnot very low frequency
-        goto    display_f_2dec          ; .. go to display with 2 decimals
+        btfsc   DEC_3                   ; if very low frequency
+        goto    display_f_3dec          ; .. go to display with 3 decimals
+        btfsc   DEC_1                   ; if medium low frequency
+        goto    display_f_1dec          ; .. go to display with 1 decimals
 
-        ; Display routine for very low frequencies with three decimals up to "99.999 Hz" (theoretical):
-display_f_3dec:
-        movlw   digit_4                 ; find the first significant digit starting from d4 ..
-        movwf   FSR                     ; .. by stepping over leading zeroes
-        tstf    INDF                    ; INDF = *(FSR) in "C" syntax, FSR points to 'digits'
-        BNZ     d_f3d1                  ; 10-Hz-digit non-zero, show frequency in Hz [XX.xxx]
-        movlw   BLANK
-        movwf   INDF                    ; else blank the leading zero
-                                        ; and show frequency in Hz [ X.xxx]
-d_f3d1: btfss   blinker, 0              ; check the blink flag (bit 0) for the Hz-points
-        goto    display
-        bsf     digit_5, 7              ; set two blinking points around the decimals ..
-        bsf     digit_8, 7              ; .. indicating Hz
-        goto    display                 ; and show the result right aligned
-
-        ; Display routine for frequencies with two decimals up to "999.99 Hz" (theoretical):
+        ; else display frequencies with two decimals up to "999.99 Hz" (theoretical):
 display_f_2dec:
         movlw   digit_4                 ; find the first significant digit starting from d4 ..
         movwf   FSR                     ; .. by stepping over leading zeroes
@@ -1285,11 +1304,41 @@ d_f2d1: btfss   blinker, 0              ; ifnot blink flag (bit 0) for the Hz-po
         bsf     digit_8, 7              ; .. indicating Hz
         goto    display_5_lowest        ; and show the result right aligned
 
+        ; Display routine for frequencies with one decimal up to "9999.9 Hz" (theoretical):
+display_f_1dec:
+        movlw   digit_4                 ; find the first significant digit starting from d4 ..
+        movwf   FSR                     ; .. by stepping over leading zero
+        tstf    INDF                    ; INDF = *(FSR) in "C" syntax, FSR points to 'digits'
+        BNZ     d_f1d1                  ; 1000-Hz-digit non-zero, show frequency in Hz [XXXX.x]
+        movlw   BLANK
+        movwf   INDF                    ; else blank the leading zero
+                                        ; and show frequency in Hz [ XXX.x]
+d_f1d1: btfss   blinker, 0              ; check the blink flag (bit 0) for the Hz-points
+        goto    display
+        bsf     digit_7, 7              ; set two blinking points around the decimal ..
+        bsf     digit_8, 7              ; .. indicating Hz
+        goto    display                 ; and show the result right aligned
+
+        ; Display routine for very low frequencies with three decimals up to "99.999 Hz" (theoretical):
+display_f_3dec:
+        movlw   digit_4                 ; find the first significant digit starting from d4 ..
+        movwf   FSR                     ; .. by stepping over leading zeroes
+        tstf    INDF                    ; INDF = *(FSR) in "C" syntax, FSR points to 'digits'
+        BNZ     d_f3d1                  ; 10-Hz-digit non-zero, show frequency in Hz [XX.xxx]
+        movlw   BLANK
+        movwf   INDF                    ; else blank the leading zero
+                                        ; and show frequency in Hz [ X.xxx]
+d_f3d1: btfss   blinker, 0              ; check the blink flag (bit 0) for the Hz-points
+        goto    display
+        bsf     digit_5, 7              ; set two blinking points around the decimals ..
+        bsf     digit_8, 7              ; .. indicating Hz
+        goto    display                 ; and show the result right aligned
+
         ; Display routine for integer frequencies from 1 Hz up to 999.99 MHz (theoretical):
         ; (do NOT insert the decimal point yet,
         ;   it would disturb the blanking of LEADING zeroes )
 display_f_int:
-        bcf     VERY_LOW                ; leave very low mode
+        bcf     DEC_3                   ; leave very low mode
         btfsc   EVENT_ON                ; if event mode
         goto    display_5_lowest        ; .. show 5 rightmost digits without point
         btfsc   CALIBRATE               ; if calibrate mode
@@ -1703,10 +1752,13 @@ NoAdjust: ; Check the result against under- and overflow.
         ;             would cause problems or inaccurate calculations
         ;             We only accept frequencies < 256 Hz in frequency mode
         ;
-        movf    freq_hi, w
-        iorwf   freq_mh, w
-        iorwf   freq_ml, w
-        BNZ     F_Hirange       ; frequencies > 255 Hz go to extended RPM range check
+        ;movf    freq_hi, w
+        ;iorwf   freq_mh, w
+        ;iorwf   freq_ml, w     ; HACK > 0xFFFF
+        MOVLx32 999, freq2
+        SUBx32  freq, freq2     ; C = ( freq < 1000 )
+        BNC     F_Hirange       ; frequencies > 999 Hz go to extended RPM range check
+        ;BNZ     F_Hirange       ; frequencies > 255 Hz go to extended RPM range check
 
         ;  frequency  is <= 255 Hz.
 
@@ -1731,14 +1783,17 @@ P_Zero: movf    pcnt, f         ; zero periods? This could happen at very low
         ;             big, so 32-bit mode is needed
         ;
         ;
-P_Conv:                         ; come here if f < 256 Hz
+P_Conv:                         ; come here if f < 1000 Hz
+        iorwf   freq_ml,f       ; if > 255 Hz?
+        BNZ     P_Conv_1        ; convert with 1 decimal digit
+        bcf     DEC_1
         movlw   62              ; limit to < 62 Hz
         subwf   freq_lo, w      ; .. to examine utility frequencies 50 & 60 Hz
         BC      P_Conv_2        ; skip if f >= 62 Hz
-        movlw   VERY_LOW_MASK
+        movlw   DEC_3_MASK
         btfss   IOP_SWITCH      ; check the switch
-        xorwf   pmodeflag, f    ; .. if pressed toggle VERY_LOW mode
-        btfss   VERY_LOW        ; check if VERY_LOW mode
+        xorwf   pmodeflag, f    ; .. if pressed toggle DEC_3 mode
+        btfss   DEC_3           ; check if DEC_3 mode
         goto    P_Conv_2        ; .. not set: goto normal 2 decimal mode
 
 P_Conv_3
@@ -1748,8 +1803,15 @@ P_Conv_3
 
 P_Conv_2
         ; calculate frequency with 2 decimals digits
-        bcf     VERY_LOW         ; exit very low mode
+        bcf     DEC_3           ; exit very low mode
         MOVLx32 PER2FREQ2, freq2 ; conversion for resolution 10 mHz
+        goto    P_Conv_end
+
+P_Conv_1
+        ; calculate frequency with 1 decimals digit
+        bcf     DEC_3           ; exit very low mode
+        bsf     DEC_1           ; set medium low mode
+        MOVLx32 PER2FREQ1, freq2 ; conversion for resolution 100 mHz
 
 P_Conv_end:
         clrf    freq_hi         ; we re-use the frequency buffer for the 32-bit result
