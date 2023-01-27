@@ -9,6 +9,8 @@
 ;            "Crystal Oscillator Frequency Counter Tester" for ~10€ or $  *
 ;                                                                         *
 ; REVISIONS: (latest entry first)                                         *
+; 2023-01-27 - Ho-Ro:                                                     *
+;              Event counter currently not working correctly -> disabled  *
 ; 2021-03-27 - Ho-Ro:                                                     *
 ;              Measure 256.0 Hz .. 999.9 Hz with 1 decimal                *
 ; 2021-03-11 - Ho-Ro:                                                     *
@@ -1454,7 +1456,9 @@ MainInit:
         call    count_pulses            ; some delay to show the test pattern
 
         clrf    pmodeflag               ; set default mode (frequency counter)
-        btfsc   IOP_SWITCH              ; if switch is high (not pressed) ..
+
+        ; HACK do not check the counter mode - it is currently not working
+        ; btfsc   IOP_SWITCH              ; if switch is high (not pressed) ..
         goto    MainLoop                ; .. save and go
         bsf     EVENT_ON
         movlw   CHAR_C                  ; prepare text "Count"

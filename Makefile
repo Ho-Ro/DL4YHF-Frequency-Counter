@@ -1,10 +1,9 @@
-all: counter_hires_event.hex counter.hex counter2_DL4YHF.hex
+all: counter_hires.hex counter.hex counter2_DL4YHF.hex
 
 
-target=counter_hires_event
+target=counter_hires
 
-
-counter_hires_event.hex: counter_hires_event.asm Makefile
+counter_hires.hex: counter_hires.asm Makefile
 	gpasm $<
 
 counter.hex: counter.asm Makefile

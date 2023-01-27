@@ -21,8 +21,8 @@ A 2nd variant [counter.asm](counter.asm) differs in three details:
 
 This looks better on 5-digit units and is easier to recognise at first glance.
 
-## 3. counter_hires_event.asm
-A 3rd variant [counter_hires_event.asm](counter_hires_event.asm) that is heavily based on the good work of
+## 3. counter_hires.asm
+A 3rd variant [counter_hires.asm](counter_hires.asm) that is heavily based on the good work of
 [TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification)
 provides a lot improvements:
 
@@ -34,8 +34,6 @@ provides a lot improvements:
 This allows to measure the mains frequencies very precisely.
 * Zoom into the 5 lowest digits while measuring frequencies up to 3.2 MHz, this allows to
 calibrate the counter exactly, apply exact 1 MHz, e.g. from a GPDSO and adjust to 00000.
-* Removed RPM measurement.
-* Enter event counting mode when key pressed at startup.
 * Rewrote "display_freq" to show a more consistent layout:
 
 ````
@@ -91,12 +89,6 @@ This will give you short term accuracy down to 1ppm.
 Remark: If the variable capacitor is mounted according to the silkscreen picture, the top side
 is connected to the hot side and the calibration is disturbed when you use a metal screwdriver.
 You should mount the capacitor 180° rotated to have top at GND.
-
-### Event counting mode
-To enter the event counting mode, press the button during power-up
-until the message "Count" is shown.
-Events are shown with leading zeros and without dots, e.g. `01234`.
-Pressing the button at any time resets the counter back to zero.
 
 ## License
 The work (except [Wolfgang's original code](DL4YHF) that is in the public domain) is released under GPL v3.
