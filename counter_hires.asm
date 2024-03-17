@@ -9,6 +9,8 @@
 ;            "Crystal Oscillator Frequency Counter Tester" for ~10€ or $  *
 ;                                                                         *
 ; REVISIONS: (latest entry first)                                         *
+; 2024-03-17 - Ho-Ro:                                                     *
+;              Event counter fixed.                                       *
 ; 2023-01-27 - Ho-Ro:                                                     *
 ;              Event counter currently not working correctly -> disabled  *
 ; 2021-03-27 - Ho-Ro:                                                     *
@@ -1151,7 +1153,7 @@ ShowInt32_FSR   ; Convert <*FSR> (32 bit integer) to 8 BCD-digits ...
 CvtAndDisplayFreq  ; Convert <freq>(32 bit integer) to 9 BCD-digits ...
         ;
         movf    pmodeflag, w; check special modes
-        andlw   b'11110000' ; any of bits 7..4 set -> no Z flag -> NoRound
+        andlw   b'11111000' ; any of bits 7..3 set -> no Z flag -> NoRound
         btfss   STATUS, Z   ; skip next instruction if standard freq counter mode
         goto    NoRound     ; .. else do not round the value
         ;
@@ -1457,8 +1459,7 @@ MainInit:
 
         clrf    pmodeflag               ; set default mode (frequency counter)
 
-        ; HACK do not check the counter mode - it is currently not working
-        ; btfsc   IOP_SWITCH              ; if switch is high (not pressed) ..
+        btfsc   IOP_SWITCH              ; if switch is high (not pressed) ..
         goto    MainLoop                ; .. save and go
         bsf     EVENT_ON
         movlw   CHAR_C                  ; prepare text "Count"
