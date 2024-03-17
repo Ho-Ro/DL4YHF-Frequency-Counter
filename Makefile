@@ -1,9 +1,8 @@
-all: counter_hires.hex counter.hex counter2_DL4YHF.hex
+TARGET = counter_hires_event
 
+all: $(TARGET).hex counter.hex counter2_DL4YHF.hex
 
-target=counter_hires
-
-counter_hires.hex: counter_hires.asm Makefile
+$(TARGET).hex: $(TARGET).asm Makefile
 	gpasm $<
 
 counter.hex: counter.asm Makefile
@@ -18,8 +17,8 @@ compare: counter2_DL4YHF.hex
 clean:
 	-rm -f *.cod *.lst *~
 
-flash: $(target).hex
+flash: $(TARGET).hex
 	diff -q $< $<.old || (ardpicprog --erase --burn -i $< && cp $< $<.old)
 
-reflash: $(target).hex
+reflash: $(TARGET).hex
 	ardpicprog --erase --burn -i $<

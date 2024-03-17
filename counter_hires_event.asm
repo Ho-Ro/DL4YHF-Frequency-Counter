@@ -217,7 +217,7 @@ LEDS_PORT       equ  PORTB              ; 7-segment LEDs port
 
 ENABLE_PORT     equ  PORTA              ; display enable port
 
-#define IOP_SWITCH  PORTA,5             ; digital input signal
+#define PUSH_BUTTON  PORTA,5            ; digital input signal
                                         ; LOW enters event mode and resets event counter
 
 
@@ -353,32 +353,29 @@ period_lo       equ  0x56       ; ... low byte
 pdiv_mh         equ  0x57       ; used to store the final division result (bits 16..23)
 pdiv_ml         equ  0x58       ; ... bits 8..15
 pdiv_lo         equ  0x59       ; ... bits 0..7
-pmodeflag       equ  0x5A       ; 7 6 5 4 3 2 1 0
+modebits        equ  0x5A       ; 7 6 5 4 3 2 1 0
                                 ; 0 0 0 0 0 - - -    = period measuring off (normal freq disp)
-                                ; 1 0 0 0 0 - - -    = PMODE_ON: measure 10mHz
-                                ; 1 1 0 0 0 - - -    = PMODE_ON + DEC_3: measure 1 mHz
-                                ; 1 0 1 0 0 - - -    = PMODE_ON + DEC_1: measure 100 mHz
-                                ; 0 0 0 1 0 - - -    = CALIBRATE
-                                ; 0 0 0 0 1 - - -    = EVENT_ON: count events, period measuring off
-#define PMODE_ON pmodeflag, 7   ; 0 = off, 1 = on
-#define DEC_3 pmodeflag, 6      ; 0 = normal, 1 = measure 1 mHz
-#define DEC_1 pmodeflag, 5      ; 0 = normal, 1 = measure 1 mHz
-#define CALIBRATE pmodeflag, 4  ; 0 = normal, 1 = measure 1 second and display lowest 5 digits
-#define EVENT_ON pmodeflag, 3   ; 0 = off, 1 = on
+                                ; 1 0 0 0 0 - - -    = PMODE: measure 10mHz
+                                ; 1 1 0 0 0 - - -    = PMODE + DEC_3: measure 1 mHz
+                                ; 1 0 1 0 0 - - -    = PMODE + DEC_1: measure 100 mHz
+                                ; 0 0 0 1 0 - - -    = FZOOM
+                                ; 0 0 0 0 1 - - -    = EVENT: count events, period measuring off
+#define PMODE modebits, 7       ; 0 = count signal edges, 1 = measure signal period
+#define DEC_3 modebits, 6       ; 0 = normal, 1 = resolution 1 mHz
+#define DEC_1 modebits, 5       ; 0 = normal, 1 = resolution 100 mHz
+#define FZOOM modebits, 4       ; 0 = normal, 1 = measure 1 second and display lowest 5 digits
+#define EVENT modebits, 3       ; 0 = measure frequency, 1 = count events
+#define PMODE_MASK b'10000000'
 #define DEC_3_MASK b'01000000'
-
+#define DEC_1_MASK b'00100000'
+#define FZOOM_MASK b'00010000'
+#define EVENT_MASK b'00001000'
+#define MODES_MASK b'11111000' ; all possible special modes
 ;**************************************************************************
 ;                                                                         *
 ; Macros                                                                  *
 ;                                                                         *
 ;**************************************************************************
-
-;--------------------------------------------------------------------------
-; macros to implement lookup tables - these macros hide the PIC syntax
-; used and make the source code more readable
-;   (YHF: CAUTION - BUT THESE MACROS HIDE SOME VERY NASTY PITFALLS.
-;         TABLE MUST NOT CROSS PAGE BORDER DUE TO 'ADDWF PCL, f' ! )
-;--------------------------------------------------------------------------
 
 CQUAD   macro value
         retlw value>>24                ; high byte
@@ -387,120 +384,6 @@ CQUAD   macro value
         retlw value&0xFF                ; low byte
         endm
 
-
-#if 0
-
-TABLE   macro label                     ; define lookup table
-
-label   addwf PCL,f  ; caution: this is 'PCL' only, cannot add to the full 'PC' in a PIC !
-        endm
-
-; currently unused - replaced by the smaller/faster x32 macros
-;--------------------------------------------------------------------------
-; add with carry - adds the w register and the carry flag to the file
-; register reg, returns the result in <reg> with the carry flag set if overflow
-;--------------------------------------------------------------------------
-
-addcwf  macro reg
-
-        local add1,add2
-
-        BNC add1                      ; branch if no carry set
-        addwf reg , f                 ; add byte
-        incf reg , f                  ; add carry
-        skpnz
-        setc
-        goto add2
-add1    addwf reg,f                   ; add byte
-add2
-        endm
-
-
-;--------------------------------------------------------------------------
-; subtract with "no-carry" - subtracts the w register and the no-carry flag
-; from the file register reg, returns the result in reg with the no carry flag
-; set if underflow
-;--------------------------------------------------------------------------
-
-subncwf macro reg
-
-        local sub1,sub2
-
-        BC sub1                       ; branch if carry set
-        subwf reg, f                  ; subtract byte
-        skpnz                         ; subtract no carry
-        clrc
-        decf reg , f
-        goto sub2
-sub1    subwf reg , f                 ; subtract byte
-sub2
-        endm
-
-
-;--------------------------------------------------------------------------
-; MACRO to perform 32-bit addition - adds the four bytes at op2 to the
-; three bytes at op1 (most significant bytes first), returns the result in
-; op1 with op2 unchanged and the carry flag set if overflow
-;--------------------------------------------------------------------------
-
-add32   macro op1,op2           ; op1 := op1 + op2
-
-        movf op2+3, w           ; add low byte        (bits 7...0)
-        addwf op1+3,f
-        movf op2+2, w           ; add middle-low byte (bits 15..8)
-        addcwf op1+2
-        movf op2+1, w           ; add middle-high byte (bits 23...16)
-        addcwf op1+1
-        movf op2+0, w           ; add high byte       (bits 31...24)
-        addcwf op1+0
-
-        endm
-
-
-;--------------------------------------------------------------------------
-; MACRO to perform 32-bit subtraction - subtracts the four bytes at op2
-; from the four bytes at op1 (most significant bytes first), returns the
-; result in op1 with op2 unchanged and the no carry flag set if underflow
-;--------------------------------------------------------------------------
-
-sub32   macro op1,op2           ; op1 := op1 - op2
-
-        movf  op2+3, w          ; subtract low byte
-        subwf op1+3, f
-        movf  op2+2, w          ; subtract middle low byte
-        subncwf op1+2
-        movf  op2+1, w          ; subtract middle high byte
-        subncwf op1+1
-        movf  op2+0, w          ; subtract high byte
-        subncwf op1+0
-
-        endm
-
-;--------------------------------------------------------------------------
-; MACRO to negate a 32-bit value  (  op := 0 - op )
-;--------------------------------------------------------------------------
-
-neg32   macro op                  ; op1 := 0 - op2
-        local neg_done
-        comf  op,   f             ; invert all 8 bits in high byte
-        comf  op+1, f             ; invert all 8 bits in middle high byte
-        comf  op+2, f             ; invert all 8 bits in middle low byte
-        comf  op+3, f             ; invert all 8 bits in low byte
-        ; Note at this point 0x000000 would have turned into 0xFFFFFFF.
-        ; Must add ONE to complete the TWO's COMPLIMENT calculation ( -0  = 0 ).
-        ; Note that "incf" affects only the Z flag but not the C flag.
-        incfsz op+3, f            ; increment low byte        (bits 7...0)
-        goto   neg_done           ; if incremented result NOT zero, we're through!
-        incfsz op+2, f            ; increment middle low byte (bits 15...8)
-        goto   neg_done           ; if incremented result NOT zero, ...
-        incfsz op+1, f            ; increment middle high byte (bits 23...16)
-        goto   neg_done           ; if ...
-        incfsz op+0, f            ; increment high byte       (bits 31...24)
-        goto   neg_done           ;
-neg_done
-        endm
-
-#endif
 
 ;--------------------------------------------------------------------------
 ; MACRO to perform 32-bit subtraction - subtracts the four bytes at src
@@ -895,7 +778,7 @@ count_pulses:
         clrf    period_hi       ; clear period accumulator bits 8..15
         clrf    period_lo       ; bits 0..7
         clrf    pcnt            ; clear number of periods measured
-        bcf     PMODE_ON        ; turn period conversion off by default
+        bcf     PMODE           ; turn period conversion off by default
                                 ; until we are sure the input frequency
                                 ; is low enough for this to make sense
 
@@ -904,7 +787,7 @@ count_pulses:
         ;
         ; in counter mode, check if TMR0 moved since the last time and record
         ; the difference in t0dark
-        btfss   EVENT_ON        ; ifnot EVENT_ON
+        btfss   EVENT           ; ifnot EVENT
         goto    count0          ; then proceed as normal
         ;
         ; calculate the number of pulses missed while being ouside this routine
@@ -1052,13 +935,11 @@ P_Measure:
         ; check if pcnt has reached maximum. If yes, don't add amy further periods
         ;
         nop                     ; [56]
-        nop ;movfw   pmodeflag       ; [57]   are we in RPM or frequency mode?
-        nop ;andlw   0x07            ; [58]
-        nop ;btfss   STATUS, Z       ; [59]
-        nop ;movlw   .60             ; [60]           RPM: pre-load W with 60   freq: W is already 0
-        ; HACK
-        ; movlw   80 ;addlw   .80      ; [61]   add 80: RPM  W is 60+80=140       freq: W is 0+80 = 80
-        movlw   255 ;addlw   .80      ; [61]   add 80: RPM  W is 60+80=140       freq: W is 0+80 = 80
+        nop ;movfw   modebits   ; [57]   are we in RPM or frequency mode?
+        nop ;andlw   0x07       ; [58]
+        nop ;btfss   STATUS, Z  ; [59]
+        nop ;movlw   .60        ; [60]           RPM: pre-load W with 60   freq: W is already 0
+        movlw   255 ;addlw .80  ; [61]   add 80: RPM  W is 60+80=140       freq: W is 0+80 = 80
         subwf   pcnt, w         ; [62] W = pcnt - W
         btfsc   STATUS, C       ; [63]
         goto    P_done          ; [64+1]  stop if pcnt >= 80 (freq) or >= 140 (rpm)
@@ -1152,7 +1033,7 @@ ShowInt32_FSR   ; Convert <*FSR> (32 bit integer) to 8 BCD-digits ...
 ;--------------------------------------------------------------------------
 CvtAndDisplayFreq  ; Convert <freq>(32 bit integer) to 9 BCD-digits ...
         ;
-        movf    pmodeflag, w; check special modes
+        movf    modebits, w ; check special modes
         andlw   b'11111000' ; any of bits 7..3 set -> no Z flag -> NoRound
         btfss   STATUS, Z   ; skip next instruction if standard freq counter mode
         goto    NoRound     ; .. else do not round the value
@@ -1254,22 +1135,22 @@ conv3   ADDx32  divi, freq              ; freq := freq+divi;  ready for next dig
 ; Display the decimal digits according to the following rules
 ; input: decimal values in digit_0 (leftmost) .. digit_8 (rightmost); digit_9 = 0
 ;
-; PMODE_ON == 1 + DEC_3 == 1: very low freq period measurements with 3 decimals
+; PMODE == 1 + DEC_3 == 1: very low freq period measurements with 3 decimals
 ; 012345678
 ; 00000Abcd =>  A,bcd, ' 1.000' to ' 9.999' Hz  Hz =  blinking points at digit 5 and 8
 ; 0000ABcde => AB,cde, '10.000' to '60.999' Hz  Hz =  blinking points at digit 5 and 8
 ;
-; PMODE_ON == 1: low freq period measurements with 2 decimals
+; PMODE == 1: low freq period measurements with 2 decimals
 ; 012345678
 ; 000000Abc =>   A,bc, '  1.00' to '  9.99' Hz  Hz =  blinking points at digit 6 and 8
 ; 00000ABcd =>  AB,cd, ' 10.00' to ' 99.99' Hz  Hz =  blinking points at digit 6 and 8
 ; 0000ABCde => ABC,de, '100.00' to '249.99' Hz  Hz =  blinking points at digit 6 and 8
 ;
-; PMODE_ON == 1 + DEC_1 == 1: freq period measurements with 1 decimal
+; PMODE == 1 + DEC_1 == 1: freq period measurements with 1 decimal
 ; 012345678
 ; 00000ABCd => ABC,d, ' 250.0' to ' 999.9' Hz  Hz =  blinking points at digit 7 and 8
 ;
-; PMODE_ON = 0: freq counter measurements
+; PMODE = 0: freq counter measurements
 ; 012345678
 ; 000000ABC =>  0,ABC  ' 0.250' to ' 0.999' KHz     kHz = blinking point at digit 5
 ; 00000ABCD =>  A,BCD  ' 1.000' to ' 9.999' KHz     kHz = blinking point at digit 5
@@ -1282,7 +1163,7 @@ conv3   ADDx32  divi, freq              ; freq := freq+divi;  ready for next dig
 ; . = steady point
 ;
 display_freq:
-        btfss   PMODE_ON                ; ifnot period measurement mode
+        btfss   PMODE                   ; ifnot period measurement mode
         goto    display_f_int           ; .. go to normal display
         btfsc   DEC_3                   ; if very low frequency
         goto    display_f_3dec          ; .. go to display with 3 decimals
@@ -1343,9 +1224,9 @@ d_f3d1: btfss   blinker, 0              ; check the blink flag (bit 0) for the H
         ;   it would disturb the blanking of LEADING zeroes )
 display_f_int:
         bcf     DEC_3                   ; leave very low mode
-        btfsc   EVENT_ON                ; if event mode
+        btfsc   EVENT                   ; if event mode
         goto    display_5_lowest        ; .. show 5 rightmost digits without point
-        btfsc   CALIBRATE               ; if calibrate mode
+        btfsc   FZOOM                   ; if calibrate mode
         goto    display_calibrate       ; .. show 5 rightmost digits with 2 points alternating
         movlw   digits                  ; else find the first significant digit ..
         movwf   FSR                     ; .. by stepping over leading zeroes
@@ -1385,11 +1266,15 @@ displ_d0:
         goto    display
 
 display_calibrate:                      ; cal. mode: blink two left dots alternating
-        bcf     CALIBRATE               ; clear CALIBRATE mode
+        bcf     FZOOM                   ; clear FZOOM mode
         btfss   blinker, 0              ; if blink flag clear
+        goto    display_5_lowest
+                                        ; if blink flag set
         bsf     digit_4, 7              ; .. set topmost dot
-        btfsc   blinker, 0              ; if blink flag set
         bsf     digit_5, 7              ; .. set 2nd dot
+        bsf     digit_6, 7              ; .. set 3rd dot
+        bsf     digit_7, 7              ; .. set 4th dot
+        bsf     digit_8, 7              ; .. set 5th dot
 
 display_5_lowest:                       ; show 5 lowest digits
         movlw   digit_4                 ; digits 45678
@@ -1457,11 +1342,11 @@ MainInit:
         MOVLx16 LAMPTEST_LOOPS, gatecnt
         call    count_pulses            ; some delay to show the test pattern
 
-        clrf    pmodeflag               ; set default mode (frequency counter)
+        clrf    modebits                ; set default mode (frequency counter)
 
-        btfsc   IOP_SWITCH              ; if switch is high (not pressed) ..
+        btfsc   PUSH_BUTTON             ; if switch is high (not pressed) ..
         goto    MainLoop                ; .. save and go
-        bsf     EVENT_ON
+        bsf     EVENT
         movlw   CHAR_C                  ; prepare text "Count"
         call    conv_char0
         movlw   CHAR_o
@@ -1478,7 +1363,7 @@ sw_wait:
         call    count_pulses            ; some delay to show the test pattern
         movlw   _DP
         xorwf   display4, f             ; blink rightnost decimal point
-        btfss   IOP_SWITCH              ; if switch is still pressed ..
+        btfss   PUSH_BUTTON             ; if switch is still pressed ..
         goto    sw_wait                 ; .. wait
 
 ;--------------------------------------------------------------------------
@@ -1602,7 +1487,7 @@ Range1_zoom:
         ; measure one second and show the 5 low digits with 1Hz resolution
         ; this allows e.g. to calibrate the quartz oscillator circuit:
         ; apply exact 1 or 2 MHz - e.g. from GPSDO - and adjust the display to 00000
-        bsf     CALIBRATE       ; use "display_calibrate" later to show low 1 Hz res
+        bsf     FZOOM       ; use "display_calibrate" later to show low 1 Hz res
 
 Range1:
         ; async prescaler off, 1 second gate time for low frequencies
@@ -1614,7 +1499,7 @@ Range1:
         goto    GoMeasure
 
 Range2:
-        btfss   IOP_SWITCH              ; if "zoom" switch is low (pressed) ..
+        btfss   PUSH_BUTTON             ; if "zoom" switch is low (pressed) ..
         goto    Range1_zoom             ; .. calibration zoom
         ; async prescaler /2 , gate time = 1 second
         movlw   PSC_DIV_BY_2            ; let the prescaler divide by 2 while MEASURING...
@@ -1626,7 +1511,7 @@ Range2:
         goto    GoMeasure
 
 Range4:
-        btfss   IOP_SWITCH              ; if switch is low (pressed) ..
+        btfss   PUSH_BUTTON             ; if switch is low (pressed) ..
         goto    Range1_zoom             ; .. calibration zoom
         ; async prescaler /2 , gate time = default (1/2 second)
         movlw   PSC_DIV_BY_2            ; let the prescaler divide by 2 while MEASURING...
@@ -1666,7 +1551,7 @@ Range64:
 
 GoMeasure:
         movwf   adjust_shifts           ; save the number of "arithmetic left shifts" for later
-        btfss   EVENT_ON                ; ifnot in event mode
+        btfss   EVENT                   ; ifnot in event mode
         goto    GoMeasure1              ; .. skip the counting stuff
 
 MainLoopCnt:
@@ -1709,7 +1594,7 @@ MainLoopCnt:
 cntvalid:
         call    CvtAndDisplayFreq
 
-        btfsc   IOP_SWITCH      ; check the switch
+        btfsc   PUSH_BUTTON     ; check the switch
         goto    MainLoopCnt     ; not pressed: keep counting...
 cntreset:
         clrf    freq2_hi        ; reset counter
@@ -1762,7 +1647,7 @@ NoAdjust: ; Check the result against under- and overflow.
         ;iorwf   freq_ml, w     ; HACK > 0xFFFF
         MOVLx32 999, freq2
         SUBx32  freq, freq2     ; C = ( freq < 1000 )
-        BNC     F_Hirange       ; frequencies > 999 Hz go to extended RPM range check
+        BNC     F_Hirange       ; frequencies > 999 Hz go to extended range check
         ;BNZ     F_Hirange       ; frequencies > 255 Hz go to extended RPM range check
 
         ;  frequency  is <= 255 Hz.
@@ -1796,8 +1681,8 @@ P_Conv:                         ; come here if f < 1000 Hz
         subwf   freq_lo, w      ; .. to examine utility frequencies 50 & 60 Hz
         BC      P_Conv_2        ; skip if f >= 62 Hz
         movlw   DEC_3_MASK
-        btfss   IOP_SWITCH      ; check the switch
-        xorwf   pmodeflag, f    ; .. if pressed toggle DEC_3 mode
+        btfss   PUSH_BUTTON     ; check the switch
+        xorwf   modebits, f     ; .. if pressed toggle DEC_3 mode
         btfss   DEC_3           ; check if DEC_3 mode
         goto    P_Conv_2        ; .. not set: goto normal 2 decimal mode
 
@@ -1870,7 +1755,7 @@ P_DivEnd: clrf  freq_hi     ; copy the result back into the freq_xx variable
         movwf   freq_ml
         movf    pdiv_lo, w
         movwf   freq_lo
-        bsf     PMODE_ON    ; switch to display format XXX.XX Hz
+        bsf     PMODE    ; switch to display format XXX.XX Hz
         ; Div end
 
 F_Hirange:
