@@ -3,12 +3,15 @@
 ; CONTENTS:  Simple low-cost digital frequency meter using a PIC 16F628A  *
 ; ORIGIN:    Wolfgang Buescher, DL4YHF                                    *
 ;            (based on a work by James Hutchby, MadLab, 1996)             *
-;            This software works only with hardware version COUNZTER2:    *
+;            This software works only with hardware version COUNTER2:     *
 ;            PIC16F628A clocked with 20 MHz, 5 digits common cathode LEDs *
 ;            The hardware is available as a kit from china:               *
 ;            "Crystal Oscillator Frequency Counter Tester" for ~10€ or $  *
 ;                                                                         *
 ; REVISIONS: (latest entry first)                                         *
+; 2024-03-19 - Ho-Ro:                                                     *
+;              Store function (frequency measurement / event counter)     *
+;              in EEPROM, change with push button during power up         *
 ; 2024-03-17 - Ho-Ro:                                                     *
 ;              Event counter fixed.                                       *
 ; 2023-01-27 - Ho-Ro:                                                     *
@@ -353,24 +356,26 @@ period_lo       equ  0x56       ; ... low byte
 pdiv_mh         equ  0x57       ; used to store the final division result (bits 16..23)
 pdiv_ml         equ  0x58       ; ... bits 8..15
 pdiv_lo         equ  0x59       ; ... bits 0..7
-modebits        equ  0x5A       ; 7 6 5 4 3 2 1 0
-                                ; 0 0 0 0 0 - - -    = period measuring off (normal freq disp)
-                                ; 1 0 0 0 0 - - -    = PMODE: measure 10mHz
-                                ; 1 1 0 0 0 - - -    = PMODE + DEC_3: measure 1 mHz
-                                ; 1 0 1 0 0 - - -    = PMODE + DEC_1: measure 100 mHz
-                                ; 0 0 0 1 0 - - -    = FZOOM
-                                ; 0 0 0 0 1 - - -    = EVENT: count events, period measuring off
+options         equ  0x5A
+modebits        equ  0x5B       ; 7 6 5 4 3 2 1 0
+                                ; 0 0 0 0 - - - 0    = period measuring off (normal freq disp)
+                                ; 1 0 0 0 - - - 0    = PMODE: measure 10mHz
+                                ; 1 1 0 0 - - - 0    = PMODE + DEC_3: measure 1 mHz
+                                ; 1 0 1 0 - - - 0    = PMODE + DEC_1: measure 100 mHz
+                                ; 0 0 0 1 - - - 0    = FZOOM
+                                ; 0 0 0 0 - - - 1    = EVENT: count events, period measuring off
 #define PMODE modebits, 7       ; 0 = count signal edges, 1 = measure signal period
 #define DEC_3 modebits, 6       ; 0 = normal, 1 = resolution 1 mHz
 #define DEC_1 modebits, 5       ; 0 = normal, 1 = resolution 100 mHz
 #define FZOOM modebits, 4       ; 0 = normal, 1 = measure 1 second and display lowest 5 digits
-#define EVENT modebits, 3       ; 0 = measure frequency, 1 = count events
+#define EVENT modebits, 0       ; 0 = measure frequency, 1 = count events
 #define PMODE_MASK b'10000000'
 #define DEC_3_MASK b'01000000'
 #define DEC_1_MASK b'00100000'
 #define FZOOM_MASK b'00010000'
-#define EVENT_MASK b'00001000'
-#define MODES_MASK b'11111000' ; all possible special modes
+#define EVENT_MASK b'00000001'
+#define MODES_MASK b'11110001' ; all possible special modes
+#define FUNCT_MASK b'00000001' ; mask device function selector
 
 
 #define EEPROM_ADR_OPTIONS 0   ; EEPROM location for "options" (flags)
@@ -542,10 +547,12 @@ CHAR_o  equ     16              ; Other letters used in "Count"
 CHAR_u  equ     17              ;
 CHAR_n  equ     18              ;
 CHAR_t  equ     19              ;
-BLANK   equ     20              ; blank display
-TEST    equ     21              ; power-on display test
+CHAR_r  equ     20              ; Other letters used in "FrEQ"
+CHAR_Q  equ     21              ;
+BLANK   equ     22              ; blank display
+TEST    equ     23              ; power-on display test
 
-DPPOINT_BIT equ  1              ; decimal point bit (same for all digits)
+DPPOINT_BIT equ 1               ; decimal point bit (same for all digits)
 #define _A      0x40            ; bitmask for segment A , etc ..
 #define _B      0x80
 #define _C      0x04
@@ -600,9 +607,11 @@ Digit2SevenSeg:
         retlw (      _C+_D+_E      )^SSEG_XORMASK ; ..CDE.. = 'u'    ( # 17 )
         retlw (      _C   +_E   +_G)^SSEG_XORMASK ; ABC.EF. = 'n'    ( # 18 )
         retlw (         _D+_E+_F+_G)^SSEG_XORMASK ; ...DEFG = 't'    ( # 19 )
+        retlw (           +_E   +_G)^SSEG_XORMASK ; ABC.EFG = 'r'    ( # 20 )
+        retlw (_A+_B+_C+_D+_E+_F+_DP)^SSEG_XORMASK ; ABC.EFG+DP = 'Q'( # 21 )
         ; blank and test pattern
-        retlw (BLANK_PATTERN       )^SSEG_XORMASK ; ....... = ' '    ( # 20 )
-        retlw (b'11111111'         )^SSEG_XORMASK ; all segments on  ( # 21 )
+        retlw (BLANK_PATTERN       )^SSEG_XORMASK ; ....... = ' '    ( # 22 )
+        retlw (b'11111111'         )^SSEG_XORMASK ; all segments on  ( # 23 )
 
 
 ;--------------------------------------------------------------------------
@@ -833,26 +842,9 @@ EEPROM_ReadByte:    ; read ONE byte from the PIC's data EEPROM
         errorlevel +302 ; Enable banking message again
     ;   bsf     INTCON, GIE  ; re-enable interrupts ? NOT IN THIS APPLICATION !
         movwf   INDF         ; place result in *FSR
-        movfw   bTemp       ; restore W
+        movfw   bTemp        ; restore W
         return               ; back to caller
  ; end EEPROM_ReadByte
-
-EEPROM_Read4Byte: ; read FOUR bytes from the PIC's data EEPROM.
-        ;  Input parameters:
-        ;    w    contains EEPROM address offset (i.e. "source index")
-        ;         will *NOT* be modified to simplify block-read .
-        ;    FSR  points to the memory location where the byte shall be placed.
-        call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 31..24)
-        addlw   1               ; next source address
-        incf    FSR , f         ; next destination address
-        call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 23..16)
-        addlw   1               ; next source address
-        incf    FSR , f         ; next destination address
-        call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 15..8)
-        addlw   1               ; next source address
-        incf    FSR , f         ; next destination address
-        goto    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits  7..0)
- ; end EEPROM_Read4Byte
 
 
 ;--------------------------------------------------------------------------
@@ -1099,9 +1091,7 @@ WasteT1:addlw   0xFF            ; [51,    .. ]
         incf    freq_mh, f      ; over
 
 count3  retlw   0
-
 ; end of routine 'count_pulses'.   Result now in   freq_lo..freq_hi.
-
 
 
 ;--------------------------------------------------------------------------
@@ -1109,6 +1099,7 @@ count3  retlw   0
 ;  Input :  INDF = *FSR, 32-bit integer.
 ;  Bad side effect : CONTENTS OF <freq> will be lost!
 ;--------------------------------------------------------------------------
+#if 0
 ShowInt32_FSR   ; Convert <*FSR> (32 bit integer) to 8 BCD-digits ...
         movf   INDF, w     ; W   := *FSR   , load LOW byte
         incf   FSR , f     ; FSR := FSR + 1
@@ -1123,6 +1114,7 @@ ShowInt32_FSR   ; Convert <*FSR> (32 bit integer) to 8 BCD-digits ...
         incf   FSR , f     ; FSR := FSR + 1
         movwf  freq+3      ; freq.lo := W
         ; continue with CvtAndDisplayFreq !
+#endif
 
 ;--------------------------------------------------------------------------
 ; Convert <freq> into BCD and show it on the display.
@@ -1131,7 +1123,7 @@ ShowInt32_FSR   ; Convert <*FSR> (32 bit integer) to 8 BCD-digits ...
 CvtAndDisplayFreq  ; Convert <freq>(32 bit integer) to 9 BCD-digits ...
         ;
         movf    modebits, w ; check special modes
-        andlw   b'11111000' ; any of bits 7..3 set -> no Z flag -> NoRound
+        andlw   MODES_MASK  ; any of bits 7654...0 set -> no Z flag -> NoRound
         btfss   STATUS, Z   ; skip next instruction if standard freq counter mode
         goto    NoRound     ; .. else do not round the value
         ;
@@ -1179,7 +1171,6 @@ check100k:
         movlw   5
         movwf   freq2_lo
         ADDx32  freq2, freq             ; freq += 5;
-        ; goto    NoRound
 
 NoRound:
         clrf    tens_index              ; initialise the table index
@@ -1400,7 +1391,6 @@ display_w:                              ; come here with 1st char in w, e.g. BLA
 ;--------------------------------------------------------------------------
 
 MainInit:
-
         movlw   PORT_A_IO               ; initialise port A
         errorlevel -302 ; Turn off banking message for the next few instructions..
         bsf     STATUS, RP0             ;! setting RP0 enables access to TRIS regs
@@ -1420,7 +1410,7 @@ MainInit:
 
         movlw   BLANK                   ; blank character as dummy ...
         movwf   digit_8                 ; for the lowest frequency display range
-
+#if (DEBUG==1)
         movlw   TEST                    ; test all LED segments
         call    conv_char0
         movlw   TEST
@@ -1432,36 +1422,51 @@ MainInit:
         movlw   TEST
         call    conv_char4
 
-        movlw   PSC_DIV_BY_256          ; let the prescaler divide by 256 while testing..
-        call    SetPrescaler            ; safely write <W> into option register
-
         ; Do a LAMP TEST for half a second, including all decimal points :
         MOVLx16 LAMPTEST_LOOPS, gatecnt
         call    count_pulses            ; some delay to show the test pattern
+#endif
+        movlw   PSC_DIV_BY_256          ; let the prescaler divide by 256 while testing..
+        call    SetPrescaler            ; safely write <W> into option register
 
         clrf    modebits                ; set default mode (frequency counter)
 
-        btfsc   PUSH_BUTTON             ; if switch is high (not pressed) ..
-        goto    MainLoop                ; .. save and go
-        bsf     EVENT
-        movlw   CHAR_C                  ; prepare text "Count"
-        call    conv_char0
-        movlw   CHAR_o
-        call    conv_char1
-        movlw   CHAR_u
-        call    conv_char2
-        movlw   CHAR_n
-        call    conv_char3
-        movlw   CHAR_t
-        call    conv_char4
-sw_wait:
-        ; show the text for 0.1 second
-        MOVLx16 COUNTMODE_LOOPS, gatecnt ; 0.1 second display
-        call    count_pulses            ; some delay to show the test pattern
-        movlw   _DP
-        xorwf   display4, f             ; blink rightnost decimal point
-        btfss   PUSH_BUTTON             ; if switch is still pressed ..
-        goto    sw_wait                 ; .. wait
+        movlw  options                  ; destination address for reading from EEPROM..
+        movwf  FSR                      ;
+        movlw  EEPROM_ADR_OPTIONS       ; load EEPROM-internal offset of "options"-byte
+        call   EEPROM_ReadByte          ; read single byte from EEPROM: options := EEEPROM[W]
+
+        ; Blank the display until 1st measurement is available :
+        call  ClearDisplay
+
+        ; TheHWCave:  We use the options variable which has been restored
+        ;             from EEPROM earlier, to store whether RPM or frequency
+        ;             should be displayed
+        movfw options
+        andlw FUNCT_MASK                ; restore only the function
+        movwf modebits
+
+SwitchMode:
+        call  show_mode
+        movlw (LAMPTEST_LOOPS)>>8       ; high byte for 0.5 second lamp test
+        movwf gatecnt_hi
+        movlw (LAMPTEST_LOOPS)&0ffh     ; low byte for 0.5 second lamp test
+        movwf gatecnt_lo
+        call  count_pulses
+        btfsc PUSH_BUTTON               ; check the switch
+        goto  SaveMode                  ; not pressed: save and go ...
+        movlw EVENT_MASK                ; pressed: next setting
+        xorwf modebits, f               ; change mode
+        goto  SwitchMode
+SaveMode:
+        movfw modebits
+        andlw FUNCT_MASK                ; save only the function
+        movwf options
+        movlw options                   ; .. and store in EEPROM
+        movwf FSR
+        movlw EEPROM_ADR_OPTIONS        ; load EEPROM-internal offset of "options"-byte
+        call  SaveInEEPROM
+
 
 ;--------------------------------------------------------------------------
 ; main loop :  Preparation, auto ranging, measurement, conversion, display
@@ -1648,61 +1653,9 @@ Range64:
 
 GoMeasure:
         movwf   adjust_shifts           ; save the number of "arithmetic left shifts" for later
-        btfss   EVENT                   ; ifnot in event mode
-        goto    GoMeasure1              ; .. skip the counting stuff
+        btfsc   EVENT                   ; if in event mode
+        goto    EventCount             ; .. enter event counting
 
-MainLoopCnt:
-        ; we are in event counter mode
-        ; Load the GATE TIMER (as count of loops) for this measuring range.
-        MOVLx16 GATE_TIME_LOOPS/10, gatecnt ; 1/10 second gate time
-        call    count_pulses               ; count pulses for 1/10s
-        ; Result in freq_lo,freq_ml,freq_mh,freq_hi (32 bit) now
-        ADDx32  freq, freq2 ; freq2 = freq2 + freq
-        ;
-        ; add any counts that happened during "dark time"
-        movf    t0dark, w
-        movwf   freq_lo
-        clrf    freq_ml
-        clrf    freq_mh
-        clrf    freq_hi
-        ADDx32  freq, freq2 ; freq2 = freq2 + freq
-        ; copy result back into freq for display
-        movf    freq2_hi, w
-        movwf   freq_hi
-        movf    freq2_mh, w
-        movwf   freq_mh
-        movf    freq2_ml, w
-        movwf   freq_ml
-        movf    freq2_lo, w
-        movwf   freq_lo
-        ; check for overflow 100000  = 0x0186A0
-        ; if so, reset counter
-        movf    freq_mh, w
-        sublw   0x01
-        BNC     cntreset  ; >= 0x02xxxx = must reset
-        BNZ     cntvalid  ; <= 0x00xxxx = ok
-        movf    freq_ml, w
-        sublw   0x86
-        BNC     cntreset  ; >= 0x0187xx = must reset
-        BNZ     cntvalid  ; <= 0x0185xx = ok
-        movf    freq_lo, w
-        sublw   0x9F
-        BNC     cntreset  ; >= 0x0186A0 = must reset
-cntvalid:
-        call    CvtAndDisplayFreq
-
-        btfsc   PUSH_BUTTON     ; check the switch
-        goto    MainLoopCnt     ; not pressed: keep counting...
-cntreset:
-        clrf    freq2_hi        ; reset counter
-        clrf    freq2_mh        ; bits 23..16
-        clrf    freq2_ml        ; bits 15..8
-        clrf    freq2_lo        ; bits  7..0
-        clrf    t0dark
-        clrf    t0last
-        goto    MainLoopCnt
-
-GoMeasure1:
         ; measure frequency or RPM
         call    count_pulses    ; count pulses for 1, 1/2, 1/4, or 1/8 s
         ; Result in freq_lo,freq_ml,freq_mh,freq_hi (32 bit) now,
@@ -1847,6 +1800,91 @@ P_DivEnd: clrf  freq_hi     ; copy the result back into the freq_xx variable
 F_Hirange:
         call    CvtAndDisplayFreq       ; Convert <freq> into BCD and show it on the display
         goto    MainLoop                ; end of main loop
+
+
+EventCount:
+        ; we are in event counter mode
+        ; Load the GATE TIMER (as count of loops) for this measuring range.
+        MOVLx16 GATE_TIME_LOOPS/10, gatecnt ; 1/10 second gate time
+        call    count_pulses               ; count pulses for 1/10s
+        ; Result in freq_lo,freq_ml,freq_mh,freq_hi (32 bit) now
+        ADDx32  freq, freq2 ; freq2 = freq2 + freq
+        ;
+        ; add any counts that happened during "dark time"
+        movf    t0dark, w
+        movwf   freq_lo
+        clrf    freq_ml
+        clrf    freq_mh
+        clrf    freq_hi
+        ADDx32  freq, freq2 ; freq2 = freq2 + freq
+        ; copy result back into freq for display
+        movf    freq2_hi, w
+        movwf   freq_hi
+        movf    freq2_mh, w
+        movwf   freq_mh
+        movf    freq2_ml, w
+        movwf   freq_ml
+        movf    freq2_lo, w
+        movwf   freq_lo
+        ; check for overflow 100000  = 0x0186A0
+        ; if so, reset counter
+        movf    freq_mh, w
+        sublw   0x01
+        BNC     cntreset  ; >= 0x02xxxx = must reset
+        BNZ     cntvalid  ; <= 0x00xxxx = ok
+        movf    freq_ml, w
+        sublw   0x86
+        BNC     cntreset  ; >= 0x0187xx = must reset
+        BNZ     cntvalid  ; <= 0x0185xx = ok
+        movf    freq_lo, w
+        sublw   0x9F
+        BNC     cntreset  ; >= 0x0186A0 = must reset
+cntvalid:
+        call    CvtAndDisplayFreq
+
+        btfsc   PUSH_BUTTON     ; check the switch
+        goto    EventCount     ; not pressed: keep counting...
+cntreset:
+        clrf    freq2_hi        ; reset counter
+        clrf    freq2_mh        ; bits 23..16
+        clrf    freq2_ml        ; bits 15..8
+        clrf    freq2_lo        ; bits  7..0
+        clrf    t0dark
+        clrf    t0last
+        goto    EventCount
+
+
+; Load the display with the current mode (freq / counter)
+
+show_mode:
+        movfw modebits          ; get current mode
+        andlw FUNCT_MASK        ; just the function selection
+        btfss STATUS, Z         ; if not zero
+        goto sm_count           ; .. it is count
+sm_freq:
+        movlw CHAR_F            ; set to "FrEQ"
+        call conv_char0
+        movlw CHAR_r
+        call conv_char1
+        movlw CHAR_E
+        call conv_char2
+        movlw CHAR_Q
+        call conv_char3
+        movlw BLANK
+        call conv_char4
+        retlw 0
+sm_count:
+        movlw CHAR_C            ; set to "Count"
+        call conv_char0
+        movlw CHAR_o
+        call conv_char1
+        movlw CHAR_u
+        call conv_char2
+        movlw CHAR_n
+        call conv_char3
+        movlw CHAR_t
+        call conv_char4
+        retlw 0
 
 
 RefreshDisplay:

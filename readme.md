@@ -21,8 +21,8 @@ A 2nd variant [counter.asm](counter.asm) differs in three details:
 
 This looks better on 5-digit units and is easier to recognise at first glance.
 
-## 3. counter_hires.asm
-A 3rd variant [counter_hires.asm](counter_hires.asm) that is heavily based on the good work of
+## 3. counter_hires_event.asm
+A 3rd variant [counter_hires_event.asm](counter_hires_event.asm) that is heavily based on the good work of
 [TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification)
 provides a lot improvements:
 
@@ -33,7 +33,7 @@ provides a lot improvements:
 * Toggle three-decimals mode with 1 mHz resolution up to 60.999 Hz with key press.
 This allows to measure the mains frequencies very precisely.
 * Zoom into the 5 lowest digits while measuring frequencies up to 3.2 MHz, this allows to
-calibrate the counter exactly, apply exact 1 MHz, e.g. from a GPDSO and adjust to 00000.
+calibrate the counter, apply exact 1 MHz, e.g. from a GPDSO and adjust to 00000.
 * Rewrote "display_freq" to show a more consistent layout:
 
 ````
@@ -48,7 +48,8 @@ calibrate the counter exactly, apply exact 1 MHz, e.g. from a GPDSO and adjust t
  | 10 Hz      |    10„00„ |  Two Hz-dots are flashing (normal mode)
  | 100 Hz     |   100„00„ |  Two Hz-dots are flashing (normal mode)
  | 255.99 Hz  |   255„99„ |  Two Hz-dots are flashing (normal mode)
- | 256 Hz     |    0„256  |  One kHz-dot is flashing
+ | 256 Hz     |    256„0„ |  Two Hz-dots are flashing (one-digit mode)
+ | 999 Hz     |    999„0„ |  Two Hz-dots are flashing (one-digit mode)
  | 1000 Hz    |    1„000  |  One kHz-dot is flashing
  | 10.000 KHz |   10„000  |  One kHz-dot is flashing
  | 100.00 KHz |   100„00  |  One kHz-dot is flashing
@@ -89,6 +90,12 @@ This will give you short term accuracy down to 1ppm.
 Remark: If the variable capacitor is mounted according to the silkscreen picture, the top side
 is connected to the hot side and the calibration is disturbed when you use a metal screwdriver.
 You should mount the capacitor 180° rotated to have top at GND.
+
+### Switching between frequency and event counter mode
+When switching on, the current working mode is briefly displayed, either `FrEQ` or `Count`.
+If you press and hold the button while switching on, the display alternates between these two modes.
+If the button is released during the desired mode, this mode is permanently saved in the EEPROM
+and the device operates either as a frequency or event counter, even after a restart
 
 ## License
 The work (except [Wolfgang's original code](DL4YHF) that is in the public domain) is released under GPL v3.
