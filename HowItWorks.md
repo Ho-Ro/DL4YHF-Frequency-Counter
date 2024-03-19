@@ -1,3 +1,5 @@
+[Wolfgang "Wolf" Büscher, DL4YHF](https://www.qsl.net/dl4yhf/), the original inventor describes the function in his [web documentation](https://www.qsl.net/dl4yhf/freq_counter/freq_counter.html):
+
 Basically the program runs in an endless loop, with the exception of the initial lamp test, programming mode, and power-saving mode which are not explained here. In the main loop the following steps are performed:
 
 1. Prepare a coarse frequency measurement for the automatic range switching: Program the asynchronous prescaler to divide by 64, so the highest external frequencies can be detected (theoretically 64 MHz, but this exceeds the PIC's specification).
@@ -29,3 +31,11 @@ If you know a bit about assembler programming: The multiplicator is always a pow
 13. Poll the 'programming function' input ("RA5"). If this digital input is low, enter programming mode (not explained here). If not, go to step 1 to begin the next measurement.
 
 Sounds tricky? Well, you don't have to understand the internal function as long as you don't want to modify the firmware!
+
+-----
+
+TheHWcave has excellent investigation videos, e.g. [A PIC based frequency counter kit - part 2:changing the firmware](https://youtu.be/8rOCmhPWLWw?t=245).
+
+See also the flow chart from his video [Frequency Counter Kit revisited: higher resolution and RPM mode](https://youtu.be/0D6EcgTQtNw?t=680).
+
+![measure freq flow](DL4YHF_measure_freq_flow.png)

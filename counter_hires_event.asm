@@ -371,6 +371,13 @@ modebits        equ  0x5A       ; 7 6 5 4 3 2 1 0
 #define FZOOM_MASK b'00010000'
 #define EVENT_MASK b'00001000'
 #define MODES_MASK b'11111000' ; all possible special modes
+
+
+#define EEPROM_ADR_OPTIONS 0   ; EEPROM location for "options" (flags)
+
+ org (0x2100+EEPROM_ADR_OPTIONS)
+    de      .0         ; [20]     "options" (flags), cleared by default
+
 ;**************************************************************************
 ;                                                                         *
 ; Macros                                                                  *
@@ -756,6 +763,96 @@ ClearDisplay:
         movwf   display3
         movwf   display4
         retlw   0
+
+
+;--------------------------------------------------------------------------
+; Save a single Byte in the PIC's Data-EEPROM.
+;  Input parameters:
+;    INDF = *FSR    contains byte to be written (was once EEDATA)
+;    w              contains EEPROM address offset (i.e. "destination index")
+;
+;--------------------------------------------------------------------------
+        ; write to EEPROM data memory as explained in the 16F628 data sheet.
+        ; EEDATA and EEADR must have been set before calling this subroutine
+        ; (optimized for the keyer-state-machine).
+        ; CAUTION : What the lousy datasheet DS40300B wont tell you:
+        ;           The example given there for the 16F628 is WRONG !
+        ;           All EEPROM regs are in BANK1 for the 16F628.
+        ;           In the PIC16F84, some were in BANK0 others in BANK1..
+        ; In the PIC16F628, things are much different... all EEPROM regs are in BANK1 !
+SaveInEEPROM:    ; save "INDF" = *FSR   in EEPROM[<w>]
+         bcf     INTCON, GIE           ; disable INTs
+         errorlevel -302 ; Turn off banking message for the next few instructions..
+         bsf     STATUS, RP0         ;!; Bank1 for "EEADR" access, PIC16F628 ONLY (not F84)
+         movwf   EEADR               ;!; write into EEPROM address register (BANK1 !!)
+         bcf     STATUS, RP0         ;!; Bank0 to read "bStorageData"
+         movfw   INDF                ; ; w := *FSR (read source data from BANK 0)
+         bsf     STATUS, RP0         ;!; Bank1 for "EEDATA" access, PIC16F628 ONLY (not F84)
+         movwf   EEDATA              ;!; EEDATA(in BANK1) := w  (BANK1; F628 only, NOT F84 !!!)
+         bsf     EECON1, WREN        ;!; set WRite ENable
+         bcf     INTCON, GIE         ;!; Is this REALLY required as in DS40300B Example 13-2 ?
+         movlw   055h                ;!;
+         movwf   EECON2              ;!; write 55h
+         movlw   0AAh                ;!;
+         movwf   EECON2              ;!; write AAh
+         bsf     EECON1, WR          ;!; set WR bit, begin write
+         ; wait until write access to the EEPROM is complete.
+SaveEW:  btfsc   EECON1, WR          ;!; WR is cleared after completion of write
+         goto    SaveEW              ;!; WR=1, write access not finished yet
+         ; Arrived here: the EEPROM write is ready
+         bcf     EECON1, WREN        ;!; disable further WRites
+         bcf     STATUS, RP0         ;!; Bank0 for normal access
+         errorlevel +302 ; Enable banking message again
+   ;     bsf     INTCON, GIE           ; enable INTs ? NOT IN THIS APPLICATION !
+         retlw   0  ; end SaveInEEPROM
+
+
+;--------------------------------------------------------------------------
+; Read a single Byte from the PIC's Data-EEPROM.
+;  Input parameters:
+;    w    contains EEPROM address offset (i.e. "source index")
+;         will *NOT* be modified to simplify block-read .
+;    FSR  points to the memory location where the byte shall be placed.
+;
+;  Result:
+;     INDF = *FSR  returns the read byte
+;--------------------------------------------------------------------------
+        ; Caution: EEDATA and EEADR have been moved from Bank0(16F84) to Bank1(16F628)
+        ;          and the example from the datasheet telling you to switch to
+        ;          bank0 to access EEDATA is rubbish (DS40300B page 93 example 13-1).
+EEPROM_ReadByte:    ; read ONE byte from the PIC's data EEPROM
+        movwf   bTemp       ; save W
+        bcf     INTCON, GIE  ; disable INTs
+        errorlevel -302 ; Turn off banking message for the next few instructions..
+        bsf     STATUS, RP0  ; Bank1 for ***ALL*** EEPROM registers in 16F628 (!)
+        movwf   EEADR        ;! write into EEPROM address register
+        bsf     EECON1, RD   ;! set "Read"-Flag for EEPROM
+                             ;   why is EECON1.RD not cleared in MPLAB-sim ?!?
+        movf    EEDATA, w    ;! read byte from EEPROM latch
+        bcf     STATUS, RP0  ;! normal access to Bank0
+        errorlevel +302 ; Enable banking message again
+    ;   bsf     INTCON, GIE  ; re-enable interrupts ? NOT IN THIS APPLICATION !
+        movwf   INDF         ; place result in *FSR
+        movfw   bTemp       ; restore W
+        return               ; back to caller
+ ; end EEPROM_ReadByte
+
+EEPROM_Read4Byte: ; read FOUR bytes from the PIC's data EEPROM.
+        ;  Input parameters:
+        ;    w    contains EEPROM address offset (i.e. "source index")
+        ;         will *NOT* be modified to simplify block-read .
+        ;    FSR  points to the memory location where the byte shall be placed.
+        call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 31..24)
+        addlw   1               ; next source address
+        incf    FSR , f         ; next destination address
+        call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 23..16)
+        addlw   1               ; next source address
+        incf    FSR , f         ; next destination address
+        call    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits 15..8)
+        addlw   1               ; next source address
+        incf    FSR , f         ; next destination address
+        goto    EEPROM_ReadByte ; *FSR = EEPROM[w]   (usually bits  7..0)
+ ; end EEPROM_Read4Byte
 
 
 ;--------------------------------------------------------------------------
@@ -1637,21 +1734,10 @@ NoAdjust: ; Check the result against under- and overflow.
         btfsc   freq_hi, 7      ; if overflow (freq > 7FFfffffh) ?
         goto    freq_overflow   ; show "E    "
 
-
-        ; TheHWcave:  This section screens out any frequencies that
-        ;             would cause problems or inaccurate calculations
-        ;             We only accept frequencies < 256 Hz in frequency mode
-        ;
-        ;movf    freq_hi, w
-        ;iorwf   freq_mh, w
-        ;iorwf   freq_ml, w     ; HACK > 0xFFFF
         MOVLx32 999, freq2
         SUBx32  freq, freq2     ; C = ( freq < 1000 )
-        BNC     F_Hirange       ; frequencies > 999 Hz go to extended range check
-        ;BNZ     F_Hirange       ; frequencies > 255 Hz go to extended RPM range check
-
-        ;  frequency  is <= 255 Hz.
-
+        BNC     F_Hirange       ; frequencies >= 1000 Hz go to extended range check
+        ;  frequency  is < 1000 Hz.
 P_Zero: movf    pcnt, f         ; zero periods? This could happen at very low
         btfss   STATUS, Z       ; .. freqencies < 2Hz.
         goto    P_Conv          ; .. we must avoid dividing by zero

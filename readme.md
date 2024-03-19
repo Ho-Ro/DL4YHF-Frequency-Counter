@@ -74,16 +74,16 @@ of measuring the typical mains frequencies 50 Hz or 60 Hz precisely.
 A test measurement of the European mains frequency shows almost exact mHz matching
 with the realtime values available online from https://www.netzfrequenzmessung.de/.
 
-### Calibration "zoom"
+### Frequency "zoom"
 In the frequency range 100 .. 3200 kHz the display can be "zoomed" into a 1 Hz resolution
 by holding down the button. This selects temporarily a measurement range of 1 s gate time
 without prescaler, yielding 1 Hz resolution,
 e.g.: a signal of exact 1012345 Hz normally shows `1.0123` with a steady dot, meaning 1.0123 MHz.
 Pressing the button changes the display to the 1 Hz resolution mode (that shows only the 5 low digits),
-giving `1„2„345`, where `„` symbolises the alternately flashing dots.
+giving `1.2.3.4.5.` with all 5 dots flashing.
 
 This mode is intended to calibrate the quartz oscillator circuit; apply an exact 1 MHz signal
-(e.g. from a GPSDO) and adjust the variable capacitor until the display shows `0„0„000`.
+(e.g. from a GPSDO), hold down the button and adjust the variable capacitor until the display shows `0.0.0.0.0.`.
 This will give you short term accuracy down to 1ppm.
 
 Remark: If the variable capacitor is mounted according to the silkscreen picture, the top side
