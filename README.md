@@ -89,7 +89,8 @@ This will give you short term accuracy down to 1ppm.
 
 Remark: If the variable capacitor is mounted according to the silkscreen picture, the top side
 is connected to the hot side and the calibration is disturbed when you use a metal screwdriver.
-You should mount the capacitor 180° rotated to have top at GND.
+You should mount the capacitor 180° rotated to have top connected to GND.
+![DL4YHF capacitor mod](HW/DL4YHF_capacitor_mod.jpg)
 
 ### Switching between frequency and event counter mode
 When switching on, the current working mode is briefly displayed, either `FrEQ` or `Count`.
