@@ -1,8 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 TARGET = counter_hires_event
 
 all: $(TARGET).hex counter.hex counter2_DL4YHF.hex
 
-$(TARGET).hex: $(TARGET).asm Makefile
+$(TARGET).hex: $(TARGET).asm macros.inc Makefile
 	gpasm $<
 
 counter.hex: counter.asm Makefile

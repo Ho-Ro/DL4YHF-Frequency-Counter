@@ -36,34 +36,34 @@ This allows to measure the mains frequencies very precisely.
 calibrate the counter, apply exact 1 MHz, e.g. from a GPDSO and adjust to 00000.
 * Rewrote "display_freq" to show a more consistent layout:
 
-````
- --------------------------
- |            |  DISPLAY  |
- | Frequency  | Freq mode |
- |------------|-----------|
- | < 1 Hz     |        0  |
- | 1 Hz       |    1„000„ |  Two Hz-dots are flashing (three-digits mode)
- | 10 Hz      |   10„000„ |  Two Hz-dots are flashing (three-digits mode)
- | 1 Hz       |     1„00„ |  Two Hz-dots are flashing (normal mode)
- | 10 Hz      |    10„00„ |  Two Hz-dots are flashing (normal mode)
- | 100 Hz     |   100„00„ |  Two Hz-dots are flashing (normal mode)
- | 255.99 Hz  |   255„99„ |  Two Hz-dots are flashing (normal mode)
- | 256 Hz     |    256„0„ |  Two Hz-dots are flashing (one-digit mode)
- | 999 Hz     |    999„0„ |  Two Hz-dots are flashing (one-digit mode)
- | 1000 Hz    |    1„000  |  One kHz-dot is flashing
- | 10.000 KHz |   10„000  |  One kHz-dot is flashing
- | 100.00 KHz |   100„00  |  One kHz-dot is flashing
- | 1.0000 MHz |   1.0000  |  One MHz-dot is steady
- | 10.000 MHz |   10.000  |  One MHz-dot is steady
- | 100.00 MHz |   100.00  |  One MHz-dot is steady
- --------------------------
- '.': steady display dot
- '„': flashing display dot
-````
+```
+The display shows the signal frequency in Hz, kHz or MHz
+according to the following table:
 
-The flashing dots change their state with every measurement loop
-
-If there is no signal at all, a single zero is displayed in the 5th digit.
+-------------------------
+|           |  DISPLAY  |
+| Frequency | Freq mode |
+|-----------|-----------|
+| < 1 Hz    |        0  |
+| 1 Hz      |    1.000. |  Two Hz-dots are steady (three-digits mode)
+| 10 Hz     |   10.000. |  Two Hz-dots are steady (three-digits mode)
+| 1 Hz      |     1.00. |  Two Hz-dots are steady
+| 10 Hz     |    10.00. |  Two Hz-dots are steady
+| 100 Hz    |   100.00. |  Two Hz-dots are steady
+| 255.99 Hz |   255.99. |  Two Hz-dots are steady
+| 256 Hz    |    256.0. |  T.o Hz-dots are steady
+| 999.9 Hz  |    999.9. |  Two Hz-dots are steady
+| 1000 Hz   |    1.000  |  One kHz-dot is steady
+| 10.00 KHz |   10.000  |  One kHz-dot is steady
+| 100.0 KHz |   100.00  |  One kHz-dot is steady
+| 1.000 MHz |   1„0000  |  One MHz-dot is flashing
+| 10.00 MHz |   10„000  |  One MHz-dot is flashing
+| 100.0 MHz |   100„00  |  One MHz-dot is flashing
+-------------------------
+'.': steady display dot
+'„': flashing display dot
+The flashing dots change their state with the measurement rate
+```
 
 ### Three-digits mode
 Frequencies < 61 Hz can optionally be displayed with three decimal digits e.g. `50„123„`,
