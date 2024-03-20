@@ -66,26 +66,25 @@ The flashing dots change their state with the measurement rate
 ```
 
 ### Three-digits mode
-Frequencies < 61 Hz can optionally be displayed with three decimal digits e.g. `50„123„`,
-where `„` symbolises the flashing dots.
+Frequencies < 61 Hz can optionally be displayed with three decimal digits e.g. `50.123.`.
 To switch between two- and three-digits mode, press the key until the mode changes.
 The high-resolution mode is cancelled when the frequency rises above 61 Hz.
-The 61 Hz is a compromise between the conversion time (increasing with frequency) and the possibility
-of measuring the typical mains frequencies 50 Hz or 60 Hz precisely.
+The 61 Hz is a compromise between the conversion time (increasing with frequency) and the
+possibility of measuring the typical mains frequencies 50 Hz or 60 Hz precisely.
 A test measurement of the European mains frequency shows almost exact mHz matching
 with the realtime values available online from https://www.netzfrequenzmessung.de/.
 
 ### Frequency "zoom"
-In the frequency range 100 .. 3200 kHz the display can be "zoomed" into a 1 Hz resolution
-by holding down the button. This selects temporarily a measurement range of 1 s gate time
-without prescaler, yielding 1 Hz resolution,
-e.g.: a signal of exact 1012345 Hz normally shows `1.0123` with a steady dot, meaning 1.0123 MHz.
-Pressing the button changes the display to the 1 Hz resolution mode (that shows only the 5 low digits),
-giving `1.2.3.4.5.` with all 5 dots flashing.
+In the frequency range 100 ... 3200 kHz, the display can be "zoomed" to a resolution of 1 Hz
+by holding down the button. This temporarily selects a measuring range of 1 s gate time
+without prescaler, which results in a resolution of 1 Hz, e.g. a signal of exactly 1012345 Hz
+results in a display of `1„0123`, where `„` represents the flashing dot, which means 1.0123 MHz.
+Pressing the button switches the display to 1 Hz resolution mode (in which only the 5 lower digits
+are displayed) and shows `1.2.3.4.5.` with all 5 dots flashing.
 
-This mode is intended to calibrate the quartz oscillator circuit; apply an exact 1 MHz signal
-(e.g. from a GPSDO), hold down the button and adjust the variable capacitor until the display shows `0.0.0.0.0.`.
-This will give you short term accuracy down to 1ppm.
+This mode is intended to calibrate the quartz oscillator; apply an exact 1 MHz signal
+(e.g. from a GPSDO), hold down the button and adjust the variable capacitor until the display
+shows `0.0.0.0.0.`. This will give you a short term accuracy down to 1ppm.
 
 Remark: If the variable capacitor is mounted according to the silkscreen picture, the top side
 is connected to the hot side and the calibration is disturbed when you use a metal screwdriver.
