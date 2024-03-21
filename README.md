@@ -2,6 +2,8 @@
 
 This repo contains the original public domain source code for Wolfgang Buescher's (DL4YHF)
 PIC based frequency counter in the directory [DL4YHF](DL4YHF) as a reference.
+His counter, in turn, is based on the earlier work of [MADLAB](http://www.madlab.org/kits/frqmeter.html),
+where they already used the idea of timed measurement based on a software loop with a known execution time.
 
 ## 1. counter_DL4YHF.asm
 I have modified the source code [counter_DL4YHF.asm](counter_DL4YHF.asm) slightly so that it can be
