@@ -33,9 +33,9 @@ provides a lot improvements:
 * Round the displayed value for frequencies > 99999 Hz.
 * Hi-res (two-decimals) mode with 10 mHz resolution up to 255.99 Hz.
 * Toggle three-decimals mode with 1 mHz resolution up to 60.999 Hz with key press.
-This allows to measure the mains frequencies very precisely.
-* Zoom into the 5 lowest digits while measuring frequencies up to 3.2 MHz, this allows to
-calibrate the counter, apply exact 1 MHz, e.g. from a GPDSO and adjust to 00000.
+This allows to measure the mains frequencies very precisely. The selection is stored in EEPROM.
+* Zoom temporarily into the 5 lowest digits while measuring frequencies up to 3.2 MHz, this allows
+to calibrate the counter, apply exact 1 MHz, e.g. from a GPDSO and adjust to 00000.
 * Rewrote "display_freq" to show a more consistent layout:
 
 ```
@@ -68,9 +68,9 @@ The flashing dots change their state with the measurement rate
 ```
 
 ### Three-digits mode
-Frequencies < 61 Hz can optionally be displayed with three decimal digits e.g. `50.123.`.
+Frequencies < 61 Hz can be displayed with three decimal digits e.g. `50.123.`.
 To switch between two- and three-digits mode, press the key until the mode changes.
-The high-resolution mode is cancelled when the frequency rises above 61 Hz.
+The mode selection is stored permanently in EEPROM.
 The 61 Hz is a compromise between the conversion time (increasing with frequency) and the
 possibility of measuring the typical mains frequencies 50 Hz or 60 Hz precisely.
 A test measurement of the European mains frequency shows almost exact mHz matching

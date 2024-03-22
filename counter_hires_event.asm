@@ -11,6 +11,9 @@
 ;            "Crystal Oscillator Frequency Counter Tester" for ~10€ or $  *
 ;                                                                         *
 ; REVISIONS: (latest entry first)                                         *
+; 2024-03-22 - Ho-Ro:                                                     *
+;              Store 2 or 3 digit resolution option (<60 Hz) in EEPROM,   *
+;              change with push button during low frequency measurement   *
 ; 2024-03-20 - Ho-Ro:                                                     *
 ;              Refactoring, move macros into own include file,            *
 ;              exchange steady/blinking dots: Hz, kHz steady, MHz blink   *
@@ -175,14 +178,15 @@
 ; '.': steady display dot
 ; '„': flashing display dot
 ; The flashing dots change their state with the measurement rate
-; Three-digits mode
-; Frequencies < 61 Hz can optionally be displayed with three decimal digits.
-; e.g. "50.123."
-; To switch between two- and three-digit mode, press the key until the mode changes.
-; The high-resolution mode is cancelled when the frequency rises above 61 Hz.
-; The 61 Hz is a compromise between the conversion time and the possibility
-; of measuring the mains frequencies 50 Hz or 60 Hz precisely.
 ;
+; Three-digits mode
+; Frequencies < 61 Hz can optionally be displayed with three decimal places,
+; e.g. "50.123", whereby the measurement rate decreases.
+; To switch between two- and three-digit mode, press the key until the mode changes.
+; The selection is stored in EEPROM and active until changed with button press.
+; The 61 Hz is a compromise between the computing time, which increases with
+; the measurement frequency, and the possibility of precisely measuring the
+; global mains frequencies of 50 Hz and 60 Hz.
 ; If there is no signal at all, a single zero is displayed in the 5th digit.
 ;
 ; Frequency zoom
@@ -380,26 +384,31 @@ period_lo       equ  0x56       ; ... low byte
 pdiv_mh         equ  0x57       ; used to store the final division result (bits 16..23)
 pdiv_ml         equ  0x58       ; ... bits 8..15
 pdiv_lo         equ  0x59       ; ... bits 0..7
-options         equ  0x5A
-modebits        equ  0x5B       ; 7 6 5 4 3 2 1 0
-                                ; 0 0 0 0 - - - 0    = period measuring off (normal freq disp)
-                                ; 1 0 0 0 - - - 0    = PMODE: measure 10mHz
-                                ; 1 1 0 0 - - - 0    = PMODE + DEC_3: measure 1 mHz
-                                ; 1 0 1 0 - - - 0    = PMODE + DEC_1: measure 100 mHz
-                                ; 0 0 0 1 - - - 0    = FZOOM
-                                ; 0 0 0 0 - - - 1    = EVENT: count events, period measuring off
+options         equ  0x5A       ; persistent options, stored in EEPROM
+                                ; 7 6 5 4 3 2 1 0
+                                ; - - - - - - x 1    = EVENT: count events, period measuring off
+                                ; - - - - - - 1 x    = MILLI: switch to mHz resolution below 61 Hz
+#define EVENT options, 0        ; 0 = measure frequency, 1 = count events
+#define MILLI options, 1        ; 0 = resolution 10 mHz, 1 = resolution 1 mHz
+#define EVENT_MASK  b'00000001'
+#define MILLI_MASK  b'00000010'
+#define OPTION_MASK b'00000011' ; mask device options
+modebits        equ  0x5B       ; special device modes
+                                ; 7 6 5 4 3 2 1 0
+                                ; 0 x x x - - - -    = period measuring off (normal freq disp)
+                                ; 1 0 0 0 - - - -    = PMODE: measure/show 10mHz
+                                ; 1 1 0 0 - - - -    = PMODE + DEC_3: measure/show 1 mHz
+                                ; 1 0 1 0 - - - -    = PMODE + DEC_1: measure/show 100 mHz
+                                ; 0 0 0 1 - - - -    = FZOOM
 #define PMODE modebits, 7       ; 0 = count signal edges, 1 = measure signal period
 #define DEC_3 modebits, 6       ; 0 = normal, 1 = resolution 1 mHz
 #define DEC_1 modebits, 5       ; 0 = normal, 1 = resolution 100 mHz
 #define FZOOM modebits, 4       ; 0 = normal, 1 = measure 1 second and display lowest 5 digits
-#define EVENT modebits, 0       ; 0 = measure frequency, 1 = count events
 #define PMODE_MASK b'10000000'
 #define DEC_3_MASK b'01000000'
 #define DEC_1_MASK b'00100000'
 #define FZOOM_MASK b'00010000'
-#define EVENT_MASK b'00000001'
-#define MODES_MASK b'11110001'  ; all possible special modes
-#define FUNCT_MASK b'00000001'  ; mask device function selector
+#define MODES_MASK b'11110000'  ; all possible special modes
 
 
 #define EEPROM_ADR_OPTIONS 0    ; EEPROM location for "options" (flags)
@@ -504,7 +513,7 @@ Digit2SevenSeg:
         retlw (      _C   +_E   +_G)^SSEG_XORMASK ; ABC.EF. = 'n'    ( # 18 )
         retlw (         _D+_E+_F+_G)^SSEG_XORMASK ; ...DEFG = 't'    ( # 19 )
         retlw (           +_E   +_G)^SSEG_XORMASK ; ABC.EFG = 'r'    ( # 20 )
-        retlw (_A+_B+_C+_D+_E+_F+_DP)^SSEG_XORMASK ; ABC.EFG+DP = 'Q'( # 21 )
+        retlw (_A+_B+_C+_D+_E+_F+_DP)^SSEG_XORMASK; ABC.EFG+DP = 'Q' ( # 21 )
         ; blank and test pattern
         retlw (BLANK_PATTERN       )^SSEG_XORMASK ; ....... = ' '    ( # 22 )
         retlw (b'11111111'         )^SSEG_XORMASK ; all segments on  ( # 23 )
@@ -609,9 +618,8 @@ ENDIF
         ; TheHWCave:  We use the options variable which has been restored
         ;             from EEPROM earlier, to store whether RPM or frequency
         ;             should be displayed
-        movfw options
-        andlw FUNCT_MASK                ; restore only the function
-        movwf modebits
+        movlw OPTION_MASK               ; restore only the valid options
+        andwf options, f
 SwitchMode:
         call  ShowMode
         movlw (LAMPTEST_LOOPS)>>8       ; high byte for 0.5 second lamp test
@@ -619,15 +627,18 @@ SwitchMode:
         movlw (LAMPTEST_LOOPS)&0xff     ; low byte for 0.5 second lamp test
         movwf gatecnt_lo
         call  CountPulses
+        clrf  bTemp                     ; marker
         btfsc PUSH_BUTTON               ; check the switch
         goto  SaveMode                  ; not pressed: save and go ...
+        bsf   bTemp, 0
         movlw EVENT_MASK                ; pressed: next setting
-        xorwf modebits, f               ; change mode
+        xorwf options, f                ; change mode
         goto  SwitchMode
 SaveMode:
-        movfw modebits
-        andlw FUNCT_MASK                ; save only the function
-        movwf options
+        btfss bTemp, 0                  ; button was not pressed and released
+        goto  MainLoop                  ; .. do not write EEPROM
+        movlw OPTION_MASK               ; save only the options
+        andwf options, f
         movlw options                   ; .. and store in EEPROM
         movwf FSR
         movlw EEPROM_ADR_OPTIONS        ; load EEPROM-internal offset of "options"-byte
@@ -893,11 +904,25 @@ P_Conv:                         ; come here if f < 1000 Hz
         movlw   62              ; limit to < 62 Hz
         subwf   freq_lo, w      ; .. to examine utility frequencies 50 & 60 Hz
         BC      P_Conv_2        ; skip if f >= 62 Hz
-        movlw   DEC_3_MASK
-        btfss   PUSH_BUTTON     ; check the switch
-        xorwf   modebits, f     ; .. if pressed toggle DEC_3 mode
-        btfss   DEC_3           ; check if DEC_3 mode
+
+        btfsc   PUSH_BUTTON     ; check the switch
+        goto    P_Conv_NoBut
+
+        movlw   MILLI_MASK
+        xorwf   options, f      ; .. if pressed toggle MILLI mode
+        movlw   OPTION_MASK     ; save only the options
+        andwf   options, f
+        movlw   options         ; .. and store in EEPROM
+        movwf   FSR
+        movlw   EEPROM_ADR_OPTIONS ; load EEPROM-internal offset of "options"-byte
+        call    SaveInEEPROM
+
+
+P_Conv_NoBut
+
+        btfss   MILLI           ; check if MILLI mode
         goto    P_Conv_2        ; .. not set: goto normal 2 decimal mode
+        bsf     DEC_3           ; set mode bit
 
 P_Conv_3
         ; calculate frequency with 3 decimal digits
@@ -1632,7 +1657,7 @@ display_w:                      ; come here with 1st char in w, e.g. BLANK
 
 ShowMode:
         movfw modebits          ; get current mode
-        andlw FUNCT_MASK        ; just the function selection
+        andlw OPTION_MASK        ; just the function selection
         btfss STATUS, Z         ; if not zero
         goto sm_count           ; .. it is count
 sm_freq:
