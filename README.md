@@ -5,8 +5,17 @@ PIC based frequency counter in the directory [DL4YHF](DL4YHF) as a reference.
 His counter, in turn, is based on the earlier work of [MADLAB](http://www.madlab.org/kits/frqmeter.html),
 where they already used the idea of timed measurement based on a software loop with a known execution time.
 
+## Hardware
+The counter is based on a Microchip PIC16F628A processor, which counts the input signal and displays the result
+with five seven-segment LEDs. My actively developed FW [counter_hires_event.asm](counter_hires_event.asm)
+requires Wolfgang's so-called display variant #2 - this variant is also available as an inexpensive
+*"Crystal Oscillator Frequency Counter Tester "* DIY kit from China, which offers the counter core (see below)
+plus a not-so-reliable crystal test oscillator that can be omitted or even modified as a simple preamplifier.
+
+![Display variant #2](HW/picboard5_sch.gif)
+
 ## 1. counter_DL4YHF.asm
-I have modified the source code [counter_DL4YHF.asm](counter_DL4YHF.asm) slightly so that it can be
+I have modified Wolfgang's source code [counter_DL4YHF.asm](counter_DL4YHF.asm) slightly so that it can be
 built with [GNU gpasm](https://gputils.sourceforge.io/) under Linux and have added a [Makefile](Makefile).
 
 To build just type `make`. The resulting `counter_DL4YHF.hex` file is identical
@@ -24,19 +33,20 @@ A 2nd variant [counter.asm](counter.asm) differs in three details:
 This looks better on 5-digit units and is easier to recognise at first glance.
 
 ## 3. counter_hires_event.asm
-A 3rd variant [counter_hires_event.asm](counter_hires_event.asm) that is heavily based on the good work of
-[TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification)
-provides a lot improvements:
+My actively developed 3rd FW variant [counter_hires_event.asm](counter_hires_event.asm) that is heavily based
+on the good work of [TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification)
+offers a lot of improvements:
 
-* Measuremant range > 100 MHz (out of PIC prescaler spec but may work)
+* Measurement range > 100 MHz (out of PIC prescaler spec but may work)
 * 1 Hz resolution up to 99999 Hz (range < 100800 Hz).
 * Round the displayed value for frequencies > 99999 Hz.
+* 100 mHz resolution for values up to 999.9 Hz.
 * Hi-res (two-decimals) mode with 10 mHz resolution up to 255.99 Hz.
 * Toggle three-decimals mode with 1 mHz resolution up to 60.999 Hz with key press.
 This allows to measure the mains frequencies very precisely. The selection is stored in EEPROM.
 * Zoom temporarily into the 5 lowest digits while measuring frequencies up to 3.2 MHz, this allows
 to calibrate the counter, apply exact 1 MHz, e.g. from a GPDSO and adjust to 00000.
-* Rewrote "display_freq" to show a more consistent layout:
+* More consistent frequency display layout:
 
 ```
 The display shows the signal frequency in Hz, kHz or MHz
@@ -62,8 +72,8 @@ according to the following table:
 | 10.00 MHz |   10„000  |  One MHz-dot is flashing
 | 100.0 MHz |   100„00  |  One MHz-dot is flashing
 -------------------------
-'.': steady display dot
-'„': flashing display dot
+'.': steady display dot (Hz and kHz)
+'„': flashing display dot (MHz)
 The flashing dots change their state with the measurement rate
 ```
 
