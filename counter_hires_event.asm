@@ -11,6 +11,9 @@
 ;            "Crystal Oscillator Frequency Counter Tester" for ~10€ or $  *
 ;                                                                         *
 ; REVISIONS: (latest entry first)                                         *
+; 2024-04-05 - Ho-Ro:                                                     *
+;              Improve event counter, keep 00000 while key pressed        *
+;              Reformat source code                                       *
 ; 2024-03-22 - Ho-Ro:                                                     *
 ;              Store 2 or 3 digit resolution option (<60 Hz) in EEPROM,   *
 ;              change with push button during low frequency measurement   *
@@ -413,8 +416,8 @@ modebits        equ  0x5B       ; special device modes
 
 #define EEPROM_ADR_OPTIONS 0    ; EEPROM location for "options" (flags)
 
- org (0x2100+EEPROM_ADR_OPTIONS)
-    de      .0                  ; "options" (flags), cleared by default
+ ORG    0x2100                  ; EEPROM start address
+        de      0               ; "options" (flags), cleared by default
 
 
 
@@ -586,7 +589,7 @@ MainInit:
 
         movlw   BLANK                   ; blank character as dummy ...
         movwf   digit_8                 ; for the lowest frequency display range
-IF (DEBUG==1)
+IF (DEBUG == 1)
         movlw   TEST                    ; test all LED segments
         call    ConvChar0
         movlw   TEST
@@ -602,47 +605,42 @@ IF (DEBUG==1)
         MOVLx16 LAMPTEST_LOOPS, gatecnt
         call    CountPulses             ; some delay to show the test pattern
 ENDIF
+        ; Blank the display until 1st measurement is available :
+        call    ClearDisplay
+
         movlw   PSC_DIV_BY_256          ; let the prescaler divide by 256 while testing..
         call    SetPrescaler            ; safely write <W> into option register
 
         clrf    modebits                ; set default mode (frequency counter)
-
-        movlw  options                  ; destination address for reading from EEPROM..
-        movwf  FSR                      ;
-        movlw  EEPROM_ADR_OPTIONS       ; load EEPROM-internal offset of "options"-byte
-        call   EEPROM_ReadByte          ; read single byte from EEPROM: options := EEEPROM[W]
-
-        ; Blank the display until 1st measurement is available :
-        call  ClearDisplay
-
-        ; TheHWCave:  We use the options variable which has been restored
-        ;             from EEPROM earlier, to store whether RPM or frequency
-        ;             should be displayed
-        movlw OPTION_MASK               ; restore only the valid options
-        andwf options, f
+        movlw   options                 ; destination address for reading from EEPROM..
+        movwf   FSR                     ;
+        movlw   EEPROM_ADR_OPTIONS      ; load EEPROM-internal offset of "options"-byte
+        call    EEPROM_ReadByte         ; read single byte from EEPROM: options := EEEPROM[W]
+        movlw   OPTION_MASK             ; restore only the valid options
+        andwf   options, f
+        clrf    bTemp                   ; clear button press marker
 SwitchMode:
-        call  ShowMode
-        movlw (LAMPTEST_LOOPS)>>8       ; high byte for 0.5 second lamp test
-        movwf gatecnt_hi
-        movlw (LAMPTEST_LOOPS)&0xff     ; low byte for 0.5 second lamp test
-        movwf gatecnt_lo
-        call  CountPulses
-        clrf  bTemp                     ; marker
-        btfsc PUSH_BUTTON               ; check the switch
-        goto  SaveMode                  ; not pressed: save and go ...
-        bsf   bTemp, 0
-        movlw EVENT_MASK                ; pressed: next setting
-        xorwf options, f                ; change mode
-        goto  SwitchMode
+        call    ShowMode
+        movlw   (LAMPTEST_LOOPS)>>8     ; high byte for 0.5 second lamp test
+        movwf   gatecnt_hi
+        movlw   (LAMPTEST_LOOPS)&0xff   ; low byte for 0.5 second lamp test
+        movwf   gatecnt_lo
+        call    CountPulses
+        btfsc   PUSH_BUTTON             ; check the switch
+        goto    SaveMode                ; not pressed: save and go ...
+        bsf     bTemp, 0                ; remenber the pressed state
+        movlw   EVENT_MASK              ; pressed: next setting
+        xorwf   options, f              ; change mode
+        goto    SwitchMode
 SaveMode:
-        btfss bTemp, 0                  ; button was not pressed and released
-        goto  MainLoop                  ; .. do not write EEPROM
-        movlw OPTION_MASK               ; save only the options
-        andwf options, f
-        movlw options                   ; .. and store in EEPROM
-        movwf FSR
-        movlw EEPROM_ADR_OPTIONS        ; load EEPROM-internal offset of "options"-byte
-        call  SaveInEEPROM
+        btfss   bTemp, 0                ; button was not pressed and released
+        goto    MainLoop                ; .. do not write EEPROM
+        movlw   OPTION_MASK             ; save only the options
+        andwf   options, f
+        movlw   options                 ; .. and store in EEPROM
+        movwf   FSR
+        movlw   EEPROM_ADR_OPTIONS      ; load EEPROM-internal offset of "options"-byte
+        call    SaveInEEPROM
 
 
 ;--------------------------------------------------------------------------
@@ -676,7 +674,7 @@ MainLoop:
         bcf     STATUS, RP0             ;! clearing RP0 for normal register access
         errorlevel +302 ; Enable banking message again
 
-        ; check for event counting already here?
+        ; check for event counting
         btfsc   EVENT                   ; if in event mode
         goto    EventCount              ; .. enter event counting
 
@@ -838,8 +836,6 @@ Range64:
 
 GoMeasure:
         movwf   adjust_shifts           ; save the number of "arithmetic left shifts" for later
-        ;btfsc   EVENT                   ; if in event mode
-        ;goto    EventCount              ; .. enter event counting - so late?
 
         ; measure frequency
         call    CountPulses    ; count pulses for 1, 1/2, 1/4, or 1/8 s
@@ -1049,6 +1045,8 @@ FreqOverflow:
 ;--------------------------------------------------------------------------
 ;
 EventCount:
+        call    PrescalerOff    ; count every pulse
+EventLoop;
         ; Load the GATE TIMER (as count of loops) for this measuring range.
         MOVLx16 GATE_TIME_LOOPS/10, gatecnt ; 1/10 second gate time
         call    CountPulses                 ; count pulses for 1/10s
@@ -1086,9 +1084,8 @@ EventCount:
         BNC     cntreset        ; >= 0x0186A0 = must reset
 cntvalid:
         call    CvtAndDisplayFreq
-
         btfsc   PUSH_BUTTON     ; check the switch
-        goto    EventCount      ; not pressed: keep counting...
+        goto    EventLoop       ; not pressed: keep counting...
 cntreset:
         clrf    freq2_hi        ; reset counter
         clrf    freq2_mh        ; bits 23..16
@@ -1096,7 +1093,9 @@ cntreset:
         clrf    freq2_lo        ; bits  7..0
         clrf    t0dark
         clrf    t0last
-        goto    EventCount
+keepcounting;
+        call    CvtAndDisplayFreq
+        goto    EventLoop
 
 
 ;--------------------------------------------------------------------------
@@ -1383,9 +1382,11 @@ ENDIF
 CvtAndDisplayFreq  ; Convert <freq>(32 bit integer) to 9 BCD-digits ...
         ;
         movf    modebits, w     ; check special modes
-        andlw   MODES_MASK      ; any of bits 7654...0 set -> no Z flag -> NoRound
+        andlw   MODES_MASK      ; any of modes bit set -> no Z flag -> NoRound
         btfss   STATUS, Z       ; skip next instruction if standard freq counter mode
         goto    NoRound         ; .. else do not round the value
+        btfsc   EVENT           ; also if event counter mode
+        goto    NoRound         ; .. do not round
         ;
         ; put rounding code here
         ; add 5 to the digit right below the lowest visible digit
@@ -1656,34 +1657,32 @@ display_w:                      ; come here with 1st char in w, e.g. BLANK
 ;--------------------------------------------------------------------------
 
 ShowMode:
-        movfw modebits          ; get current mode
-        andlw OPTION_MASK        ; just the function selection
-        btfss STATUS, Z         ; if not zero
-        goto sm_count           ; .. it is count
+        btfsc   EVENT           ; check mode
+        goto    sm_count        ; .. it is count
 sm_freq:
-        movlw CHAR_F            ; set to "FrEQ"
-        call ConvChar0
-        movlw CHAR_r
-        call ConvChar1
-        movlw CHAR_E
-        call ConvChar2
-        movlw CHAR_Q
-        call ConvChar3
-        movlw BLANK
-        call ConvChar4
-        retlw 0
+        movlw   CHAR_F          ; set to "FrEQ"
+        call    ConvChar0
+        movlw   CHAR_r
+        call    ConvChar1
+        movlw   CHAR_E
+        call    ConvChar2
+        movlw   CHAR_Q
+        call    ConvChar3
+        movlw   BLANK
+        call    ConvChar4
+        retlw   0
 sm_count:
-        movlw CHAR_C            ; set to "Count"
-        call ConvChar0
-        movlw CHAR_o
-        call ConvChar1
-        movlw CHAR_u
-        call ConvChar2
-        movlw CHAR_n
-        call ConvChar3
-        movlw CHAR_t
-        call ConvChar4
-        retlw 0
+        movlw   CHAR_C          ; set to "Count"
+        call    ConvChar0
+        movlw   CHAR_o
+        call    ConvChar1
+        movlw   CHAR_u
+        call    ConvChar2
+        movlw   CHAR_n
+        call    ConvChar3
+        movlw   CHAR_t
+        call    ConvChar4
+        retlw   0
 
 
 RefreshDisplay:
@@ -1758,30 +1757,30 @@ PSC_DIV_BY_256 equ  b'00100111' ; let prescaler divide TMR0 by 256
 SetPrescaler:  ; copy W into OPTION register, avoid watchdog trouble
         clrwdt     ; recommended by Microchip ("switching prescaler assignment")
         errorlevel -302         ; Turn off banking message for the next few instructions..
-        bsf   STATUS, RP0       ;! setting RP0 enables access to OPTION reg
+        bsf     STATUS, RP0     ;! setting RP0 enables access to OPTION reg
                                 ; option register is in bank1. i know. thanks for the warning.
-        movwf OPTION_REG        ;! ex: "option" command (yucc)
-        bcf   STATUS, RP0       ;! clearing RP0 for normal register access
+        movwf   OPTION_REG      ;! ex: "option" command (yucc)
+        bcf     STATUS, RP0     ;! clearing RP0 for normal register access
         errorlevel +302         ; Enable banking message again
-        retlw 0
+        retlw   0
 
 
 PrescalerOff:  ; turn the prescaler for TMR0 "off"
              ; (actually done by assigning the prescaler to the watchdog timer)
         clrwdt                  ; clear watchdog timer
-        clrf  TMR0              ; clear timer 0 AND PRESCALER(!)
+        clrf    TMR0            ; clear timer 0 AND PRESCALER(!)
         errorlevel -302         ; Turn off banking message for the next few instructions..
-        bsf   STATUS, RP0       ;! setting RP0 enables access to OPTION reg
+        bsf     STATUS, RP0     ;! setting RP0 enables access to OPTION reg
                                 ; option register is in bank1. i know. thanks for the warning.
-        movlw b'00100111'       ;! recommended by Microchip when
+        movlw   b'00100111'     ;! recommended by Microchip when
                                 ;! changing prescaler assignment from TMR0 to WDT
-        movwf OPTION_REG        ;! ex: "option" command (yucc)
+        movwf   OPTION_REG      ;! ex: "option" command (yucc)
         clrwdt                  ;! clear watchdog again
-        movlw b'00101111'       ;! bit 3 set means PS assigned to WDT now
-        movwf OPTION_REG        ;! ex: "option" command (yucc)
-        bcf   STATUS, RP0       ;! clearing RP0 for normal register access
+        movlw   b'00101111'     ;! bit 3 set means PS assigned to WDT now
+        movwf   OPTION_REG      ;! ex: "option" command (yucc)
+        bcf     STATUS, RP0     ;! clearing RP0 for normal register access
         errorlevel +302         ; Enable banking message again
-        retlw 0
+        retlw   0
 
 
 ;--------------------------------------------------------------------------
@@ -1849,7 +1848,7 @@ ClearDisplay:
         ;           All EEPROM regs are in BANK1 for the 16F628.
         ;           In the PIC16F84, some were in BANK0 others in BANK1..
         ; In the PIC16F628, things are much different... all EEPROM regs are in BANK1 !
-SaveInEEPROM:    ; save "INDF" = *FSR   in EEPROM[<w>]
+SaveInEEPROM:                   ; save "INDF" = *FSR   in EEPROM[<w>]
          bcf     INTCON, GIE    ; disable INTs
          errorlevel -302        ; Turn off banking message for the next few instructions..
          bsf     STATUS, RP0    ;!; Bank1 for "EEADR" access, PIC16F628 ONLY (not F84)
@@ -1889,7 +1888,7 @@ SaveEW:  btfsc   EECON1, WR     ;!; WR is cleared after completion of write
         ; Caution: EEDATA and EEADR have been moved from Bank0(16F84) to Bank1(16F628)
         ;          and the example from the datasheet telling you to switch to
         ;          bank0 to access EEDATA is rubbish (DS40300B page 93 example 13-1).
-EEPROM_ReadByte:    ; read ONE byte from the PIC's data EEPROM
+EEPROM_ReadByte:                ; read ONE byte from the PIC's data EEPROM
         movwf   bTemp           ; save W
         bcf     INTCON, GIE     ; disable INTs
         errorlevel -302         ; Turn off banking message for the next few instructions..
