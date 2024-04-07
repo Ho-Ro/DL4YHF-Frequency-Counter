@@ -5,15 +5,15 @@ PIC based frequency counter in the directory [DL4YHF](DL4YHF) as a reference.
 His counter, in turn, is based on the earlier work of [MADLAB](http://www.madlab.org/kits/frqmeter.html),
 where they already used the idea of timed measurement based on a software loop with a known execution time.
 
-## Wolfgang's Original Device
+## Hardware
+### Wolfgang's Original Device
 The counter is based on a Microchip PIC16F628A processor, which counts the input signal and displays the result
-with five seven-segment LEDs. My actively developed FW [counter_hires_event.asm](counter_hires_event.asm)
+on five seven-segment LEDs. My actively developed FW [counter_hires_event.asm](counter_hires_event.asm)
 requires Wolfgang's so-called display variant #2 (see below).
 
 ![Display variant #2](HW/picboard5_sch.gif)
 
-## The Cheap DIY Kit
-
+### The Cheap DIY Kit
 ![Crystal Oscillator Frequency Counter Tester](https://raw.githubusercontent.com/tardate/LittleArduinoProjects/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_build.jpg)
 
 This variant is available as an inexpensive
@@ -24,20 +24,23 @@ under his [MIT license](https://github.com/tardate/LittleArduinoProjects/blob/ma
 
 ![Crystal Oscillator Frequency Counter Tester Schematics](https://github.com/tardate/LittleArduinoProjects/blob/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_schematic.jpg?raw=true)
 
-### HW Modifications
+#### HW Modifications
 If you build the counter you can omit the crystal test oscillator section or even
 [convert it to a simple preamplifier](https://youtu.be/0BxpMm6SLoE?t=284).
 
-## 1. counter_DL4YHF.asm
+## Firmware
+This project provides three different firmware variants:
+
+### 1. counter_DL4YHF.asm
 I have modified Wolfgang's source code [counter_DL4YHF.asm](counter_DL4YHF.asm) slightly so that it can be
 built with [GNU gpasm](https://gputils.sourceforge.io/) under Linux and have added a [Makefile](Makefile).
 
 To build just type `make`. The resulting `counter_DL4YHF.hex` file is identical
 to Wolfgang's original version `DL4YHF/counter2.hex`. This can be tested with `make compare`.
 
-If you want to deep-dive into Wolfgang's clever coding, find out [how it works](HowItWorks.md).
+If you want to deep-dive into Wolfgang's clever coding, read his explanation [how it works](HowItWorks.md).
 
-## 2. counter.asm
+### 2. counter.asm
 A 2nd variant [counter.asm](counter.asm) differs in three details:
 1. Underflow is shown with the zero in the rightmost (5th) digit.
 2. Overflow is shown with the E in the 1st digit.
@@ -46,7 +49,7 @@ A 2nd variant [counter.asm](counter.asm) differs in three details:
 
 This looks better on 5-digit units and is easier to recognise at first glance.
 
-## 3. counter_hires_event.asm
+### 3. counter_hires_event.asm
 My actively developed 3rd FW variant [counter_hires_event.asm](counter_hires_event.asm) that is heavily based
 on the good work of [TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification)
 offers a lot of improvements:
@@ -91,7 +94,7 @@ according to the following table:
 The flashing dots change their state with the measurement rate
 ```
 
-### Three-digits mode
+#### Three-digits mode
 Frequencies < 61 Hz can be displayed with three decimal digits e.g. `50.123.`.
 To switch between two- and three-digits mode, press the key until the mode changes.
 The mode selection is stored permanently in EEPROM.
@@ -100,7 +103,7 @@ possibility of measuring the typical mains frequencies 50 Hz or 60 Hz precisely.
 A test measurement of the European mains frequency shows almost exact mHz matching
 with the realtime values available online from https://www.netzfrequenzmessung.de/.
 
-### Frequency "zoom"
+#### Frequency "zoom"
 In the frequency range 100 ... 3200 kHz, the display can be "zoomed" to a resolution of 1 Hz
 by holding down the button. This temporarily selects a measuring range of 1 s gate time
 without prescaler, which results in a resolution of 1 Hz, e.g. a signal of exactly 1012345 Hz
@@ -117,7 +120,7 @@ is connected to the hot side and the calibration is disturbed when you use a met
 You should mount the capacitor 180° rotated to have top connected to GND.
 ![DL4YHF capacitor mod](HW/DL4YHF_capacitor_mod.jpg)
 
-### Switching between frequency and event counter mode
+#### Switching between frequency and event counter mode
 When switching on, the current working mode is briefly displayed, either `FrEQ` or `Count`.
 If you press and hold the button while switching on, the display alternates between these two modes.
 If the button is released during the desired mode, this mode is permanently saved in the EEPROM
