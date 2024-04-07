@@ -5,14 +5,25 @@ PIC based frequency counter in the directory [DL4YHF](DL4YHF) as a reference.
 His counter, in turn, is based on the earlier work of [MADLAB](http://www.madlab.org/kits/frqmeter.html),
 where they already used the idea of timed measurement based on a software loop with a known execution time.
 
-## Hardware
+## Wolfgang's Original Device
 The counter is based on a Microchip PIC16F628A processor, which counts the input signal and displays the result
 with five seven-segment LEDs. My actively developed FW [counter_hires_event.asm](counter_hires_event.asm)
-requires Wolfgang's so-called display variant #2 - this variant is also available as an inexpensive
-*"Crystal Oscillator Frequency Counter Tester "* DIY kit from China, which offers the counter core (see below)
-plus a not-so-reliable crystal test oscillator that can be omitted or even modified as a simple preamplifier.
+requires Wolfgang's so-called display variant #2 (see below).
 
 ![Display variant #2](HW/picboard5_sch.gif)
+
+## The Cheap DIY Kit
+This variant is available as an inexpensive
+*"Crystal Oscillator Frequency Counter Tester"* DIY kit from China, which offers the counter core
+plus a not-so-reliable crystal test oscillator, see the schematics provided by
+[tardate](https://github.com/tardate/LittleArduinoProjects/tree/master/Equipment/FrequencyCounterKit)
+under his [MIT license](https://github.com/tardate/LittleArduinoProjects/blob/master/LICENSE).
+
+![Crystal Oscillator Frequency Counter Tester](https://github.com/tardate/LittleArduinoProjects/blob/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_schematic.jpg?raw=true)
+
+### HW Modifications
+If you build the counter you can omit the crystal test oscillator section or even
+[convert it to a simple preamplifier](https://youtu.be/0BxpMm6SLoE?t=284).
 
 ## 1. counter_DL4YHF.asm
 I have modified Wolfgang's source code [counter_DL4YHF.asm](counter_DL4YHF.asm) slightly so that it can be
