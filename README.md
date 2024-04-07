@@ -13,13 +13,16 @@ requires Wolfgang's so-called display variant #2 (see below).
 ![Display variant #2](HW/picboard5_sch.gif)
 
 ## The Cheap DIY Kit
+
+![Crystal Oscillator Frequency Counter Tester](https://raw.githubusercontent.com/tardate/LittleArduinoProjects/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_build.jpg)
+
 This variant is available as an inexpensive
 *"Crystal Oscillator Frequency Counter Tester"* DIY kit from China, which offers the counter core
 plus a not-so-reliable crystal test oscillator, see the schematics provided by
 [tardate](https://github.com/tardate/LittleArduinoProjects/tree/master/Equipment/FrequencyCounterKit)
 under his [MIT license](https://github.com/tardate/LittleArduinoProjects/blob/master/LICENSE).
 
-![Crystal Oscillator Frequency Counter Tester](https://github.com/tardate/LittleArduinoProjects/blob/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_schematic.jpg?raw=true)
+![Crystal Oscillator Frequency Counter Tester Schematics](https://github.com/tardate/LittleArduinoProjects/blob/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_schematic.jpg?raw=true)
 
 ### HW Modifications
 If you build the counter you can omit the crystal test oscillator section or even
