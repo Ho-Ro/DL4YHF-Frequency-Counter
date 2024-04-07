@@ -29,13 +29,20 @@ If you build the counter you can omit the crystal test oscillator section or eve
 [convert it to a simple preamplifier](https://youtu.be/0BxpMm6SLoE?t=284).
 
 ## Firmware
-This project provides three different firmware variants:
+This project provides three different firmware variants that are provided as `*.hex` files
+that can be programmed into the PIC processor using a tool like e.g. Microchip's PICkit
+or my [ArdPicProg](https://github.com/Ho-Ro/ArdPicProg).
+
+To program the PIC it must be removed from the counter. In circuit programming is not supported
+by the counter hardware. If you build the counter you should use a high quality socket for the PIC
+that allows some processor plugging cycles.
+
+The source code for the firmware can be translated into a `*.hex` file with the [GNU gpasm](https://gputils.sourceforge.io/)
+assembler under Linux using the [Makefile](Makefile), just type `make`.
 
 ### 1. counter_DL4YHF.asm
-I have modified Wolfgang's source code [counter_DL4YHF.asm](counter_DL4YHF.asm) slightly so that it can be
-built with [GNU gpasm](https://gputils.sourceforge.io/) under Linux and have added a [Makefile](Makefile).
-
-To build just type `make`. The resulting `counter_DL4YHF.hex` file is identical
+Wolfgang's original firmware, I have modified his source code [counter_DL4YHF.asm](counter_DL4YHF.asm)
+slightly so that it can be assembled with GNU gpasm. The resulting `counter_DL4YHF.hex` file is identical
 to Wolfgang's original version `DL4YHF/counter2.hex`. This can be tested with `make compare`.
 
 If you want to deep-dive into Wolfgang's clever coding, read his explanation [how it works](HowItWorks.md).
@@ -127,7 +134,7 @@ If the button is released during the desired mode, this mode is permanently save
 and the device operates either as a frequency or event counter, even after a restart
 
 ## License
-The work (except [Wolfgang's original code](DL4YHF) that is in the public domain) is released under GPL v3.
+The work (except [Wolfgang's original code](DL4YHF/counter.asm) that is in the public domain) is released under GPL v3.
 
 -----
 
