@@ -1,7 +1,7 @@
 # About This Repo
 
 This repo contains the original public domain source code for Wolfgang Buescher's (DL4YHF)
-PIC based frequency counter in the directory [DL4YHF](DL4YHF) as a reference.
+[PIC based frequency counter](https://www.qsl.net/d/dl4yhf/freq_counter/freq_counter.html) in the directory [`DL4YHF`](DL4YHF) as a reference.
 His counter, in turn, is based on the earlier work of [MADLAB](http://www.madlab.org/kits/frqmeter.html),
 where they already used the idea of timed measurement based on a software loop with a known execution time.
 
@@ -9,46 +9,46 @@ where they already used the idea of timed measurement based on a software loop w
 ### Wolfgang's Original Device
 The counter is based on a Microchip PIC16F628A processor, which counts the input signal and displays the result
 on five seven-segment LEDs. My actively developed FW [counter_hires_event.asm](counter_hires_event.asm)
-requires Wolfgang's so-called display variant #2 (see below).
+requires Wolfgang's so-called display variant #2 (see below) with common cathode displays.
 
 ![Display variant #2](HW/picboard5_sch.gif)
 
 ### The Cheap DIY Kit
 ![Crystal Oscillator Frequency Counter Tester](https://raw.githubusercontent.com/tardate/LittleArduinoProjects/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_build.jpg)
 
-This variant is available as an inexpensive
-*"Crystal Oscillator Frequency Counter Tester"* DIY kit from China, which offers the counter core
-plus a not-so-reliable crystal test oscillator, see the schematics provided by
+This variant #2 is available as an inexpensive *"Crystal Oscillator Frequency Counter Tester"* 
+DIY kit from several sources from China, which offers the counter core
+plus an additional crystal test oscillator, see the schematics below that were provided by
 [tardate](https://github.com/tardate/LittleArduinoProjects/tree/master/Equipment/FrequencyCounterKit)
 under his [MIT license](https://github.com/tardate/LittleArduinoProjects/blob/master/LICENSE).
 
 ![Crystal Oscillator Frequency Counter Tester Schematics](https://github.com/tardate/LittleArduinoProjects/blob/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_schematic.jpg?raw=true)
 
 #### HW Modifications
-If you build the counter you can omit the crystal test oscillator section or even
-[convert it to a simple preamplifier](https://youtu.be/0BxpMm6SLoE?t=284).
+If you build the counter you should omit the not-so-reliable crystal test oscillator section in the lower left of the schematics
+or even [convert it to a simple preamplifier](https://youtu.be/0BxpMm6SLoE?t=284).
 
 ## Firmware
-This project provides three different firmware variants that are provided as `*.hex` files
-that can be programmed into the PIC processor using a tool like e.g. Microchip's PICkit
+This project offers three different firmware variants, which are provided as `*.hex' files
+which can be programmed into the PIC processor using a HW tool such as Microchip's PICkit
 or my [ArdPicProg](https://github.com/Ho-Ro/ArdPicProg).
 
-To program the PIC it must be removed from the counter. In circuit programming is not supported
-by the counter hardware. If you build the counter you should use a high quality socket for the PIC
-that allows some processor plugging cycles.
+To program the PIC it must be removed from the counter because in-circuit programming is not supported
+by the counter hardware. If you build the counter you should use a high-quality socket for the PIC
+that allows several processor plugging cycles.
 
-The source code for the firmware can be translated into a `*.hex` file with the [GNU gpasm](https://gputils.sourceforge.io/)
-assembler under Linux using the [Makefile](Makefile), just type `make`.
+If you make changes to the firmware source code, the `*.hex` files can be recreated with the [GNU gpasm](https://gputils.sourceforge.io/).
+If you want to rebuild the firmware under Linux using the provided [Makefile](Makefile), simply type `make`.
 
-### 1. counter_DL4YHF.asm
-Wolfgang's original firmware, I have modified his source code [counter_DL4YHF.asm](counter_DL4YHF.asm)
-slightly so that it can be assembled with GNU gpasm. The resulting `counter_DL4YHF.hex` file is identical
-to Wolfgang's original version `DL4YHF/counter2.hex`. This can be tested with `make compare`.
+### 1. [counter_DL4YHF.asm](counter_DL4YHF.asm)
+This version matches Wolfgang's original firmware, I have modified his source code [`DL4YHF/counter.asm`](DL4YHF/counter.asm)
+slightly so that it can be assembled with GNU `gpasm`. The resulting [`counter2_DL4YHF.hex`](counter2_DL4YHF.hex) file is identical
+to Wolfgang's original version [`DL4YHF/counter2.hex`](DL4YHF/counter2.hex). This can be tested with `make compare`.
 
 If you want to deep-dive into Wolfgang's clever coding, read his explanation [how it works](HowItWorks.md).
 
-### 2. counter.asm
-A 2nd variant [counter.asm](counter.asm) differs in three details:
+### 2. [`counter.asm`](counter.asm)
+A 2nd variant [`counter.asm`](counter.asm) differs in three minor details:
 1. Underflow is shown with the zero in the rightmost (5th) digit.
 2. Overflow is shown with the E in the 1st digit.
 3. Gate time is 1 s for frequencies < 101760 Hz -> display resolution 1 Hz up to 99999 Hz.
@@ -56,8 +56,8 @@ A 2nd variant [counter.asm](counter.asm) differs in three details:
 
 This looks better on 5-digit units and is easier to recognise at first glance.
 
-### 3. counter_hires_event.asm
-My actively developed 3rd FW variant [counter_hires_event.asm](counter_hires_event.asm) that is heavily based
+### 3. [`counter_hires_event.asm`](counter_hires_event.asm)
+My actively developed 3rd FW variant [`counter_hires_event.asm`](counter_hires_event.asm) that is heavily based
 on the good work of [TheHWcave](https://github.com/TheHWcave/PIC-freq.counter-modification)
 offers a lot of improvements:
 
@@ -92,12 +92,12 @@ according to the following table:
 | 1000 Hz   |    1.000  |  One kHz-dot is steady
 | 10.00 KHz |   10.000  |  One kHz-dot is steady
 | 100.0 KHz |   100.00  |  One kHz-dot is steady
-| 1.000 MHz |   1„0000  |  One MHz-dot is flashing
-| 10.00 MHz |   10„000  |  One MHz-dot is flashing
-| 100.0 MHz |   100„00  |  One MHz-dot is flashing
+| 1.000 MHz |   1:0000  |  One MHz-dot is flashing
+| 10.00 MHz |   10:000  |  One MHz-dot is flashing
+| 100.0 MHz |   100:00  |  One MHz-dot is flashing
 -------------------------
-'.': steady display dot (Hz and kHz)
-'„': flashing display dot (MHz)
+'.' = steady display dot (two dots: Hz; one dot: kHz)
+':' = flashing display dot (one dot: MHz)
 The flashing dots change their state with the measurement rate
 ```
 
@@ -114,17 +114,18 @@ with the realtime values available online from https://www.netzfrequenzmessung.d
 In the frequency range 100 ... 3200 kHz, the display can be "zoomed" to a resolution of 1 Hz
 by holding down the button. This temporarily selects a measuring range of 1 s gate time
 without prescaler, which results in a resolution of 1 Hz, e.g. a signal of exactly 1012345 Hz
-results in a display of `1„0123`, where `„` represents the flashing dot, which means 1.0123 MHz.
-Pressing the button switches the display to 1 Hz resolution mode (in which only the 5 lower digits
-are displayed) and shows `1.2.3.4.5.` with all 5 dots flashing.
+results in a display of `1:0123`, where `:` represents the flashing dot, which means 1.0123 MHz.
+During the button press the display is switched to 1 Hz resolution mode (in which only the 5 lower digits
+are displayed) and shows `1:2:3:4:5:` with all 5 dots flashing.
 
 This mode is intended to calibrate the quartz oscillator; apply an exact 1 MHz signal
 (e.g. from a GPSDO), hold down the button and adjust the variable capacitor until the display
-shows `0.0.0.0.0.`. This will give you a short term accuracy down to 1ppm.
+shows `0:0:0:0:0:`. This will give you a (short term) accuracy down to 1ppm.
 
 Remark: If the variable capacitor is mounted according to the silkscreen picture, the top side
 is connected to the hot side and the calibration is disturbed when you use a metal screwdriver.
 You should mount the capacitor 180° rotated to have top connected to GND.
+
 ![DL4YHF capacitor mod](HW/DL4YHF_capacitor_mod.jpg)
 
 #### Switching between frequency and event counter mode
@@ -138,7 +139,7 @@ The work (except [Wolfgang's original code](DL4YHF/counter.asm) that is in the p
 
 -----
 
-## Original [readme.txt](DL4YHF/readme.txt) from Wolfgang's [source code archive](https://www.qsl.net/dl4yhf/freq_counter/freq_counter.zip):
+## Original [`readme.txt`](DL4YHF/readme.txt) from Wolfgang's [source code archive](https://www.qsl.net/dl4yhf/freq_counter/freq_counter.zip):
 
 ````
 Simple frequency counter with a PIC microcontroller
