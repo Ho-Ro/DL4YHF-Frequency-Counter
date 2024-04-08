@@ -174,12 +174,12 @@
 ; | 1000 Hz   |    1.000  |  One kHz-dot is steady
 ; | 10.00 KHz |   10.000  |  One kHz-dot is steady
 ; | 100.0 KHz |   100.00  |  One kHz-dot is steady
-; | 1.000 MHz |   1„0000  |  One MHz-dot is flashing
-; | 10.00 MHz |   10„000  |  One MHz-dot is flashing
-; | 100.0 MHz |   100„00  |  One MHz-dot is flashing
+; | 1.000 MHz |   1:0000  |  One MHz-dot is flashing
+; | 10.00 MHz |   10:000  |  One MHz-dot is flashing
+; | 100.0 MHz |   100:00  |  One MHz-dot is flashing
 ; -------------------------
 ; '.': steady display dot
-; '„': flashing display dot
+; ':': flashing display dot
 ; The flashing dots change their state with the measurement rate
 ;
 ; Three-digits mode
@@ -247,7 +247,7 @@ PORT_B_IO       equ  b'00000000'        ; port B I/O mode (all output)
 
 LEDS_PORT       equ  PORTB              ; 7-segment LEDs port
 
-ENABLE_PORT     equ  PORTA              ; display enable port
+MUX_PORT        equ  PORTA              ; display enable port
 
 #define PUSH_BUTTON  PORTA,5            ; digital input signal, active LOW
                                         ; switch mode, select special function,
@@ -527,7 +527,7 @@ Digit2SevenSeg:
 ; COMMON CATHODE (variants 1+2) so pulled low to enable.
 ; For DISP_VARIANT=3 (COMMON ANODE), the digit-driving pattern is inverted.
 ; Input:   W = 0 means the MOST SIGNIFICANT DIGIT (the leftmost one), etc.
-; Result:  VALUE to be written to ENABLE_PORT to activate the digit
+; Result:  VALUE to be written to MUX_PORT to activate the digit
 ;--------------------------------------------------------------------------
 ;
 Digit2MuxValue:         ;
@@ -570,27 +570,26 @@ TensTableSize   equ 9*4
 ;**************************************************************************
 ;
 MainInit:
-        movlw   PORT_A_IO               ; initialise port A
-        errorlevel -302 ; Turn off banking message for the next few instructions..
-        bsf     STATUS, RP0             ;! setting RP0 enables access to TRIS regs
-        movwf   PORTA                   ;! looks like PORTA but is in fact TRISA
-        bcf     STATUS, RP0             ;! clearing RP0 enables access to PORTs
+        movlw   PORT_A_IO       ; initialise port A
+        errorlevel -302         ; Turn off banking message for the next few instructions..
+        bsf     STATUS, RP0     ;! setting RP0 enables access to TRIS regs
+        movwf   PORTA           ;! looks like PORTA but is in fact TRISA
+        bcf     STATUS, RP0     ;! clearing RP0 enables access to PORTs
         clrf    PORTA
 
-        movlw   PORT_B_IO               ; initialise port B
-        bsf     STATUS, RP0             ;! setting RP0 enables access to TRIS regs
-        movwf   PORTB                   ;! looks like PORTB but is in fact TRISB
-        bcf     STATUS, RP0             ;! clearing RP0 enables access to PORTs
-        errorlevel +302 ; Enable banking message again
+        movlw   PORT_B_IO       ; initialise port B
+        bsf     STATUS, RP0     ;! setting RP0 enables access to TRIS regs
+        movwf   PORTB           ;! looks like PORTB but is in fact TRISB
+        bcf     STATUS, RP0     ;! clearing RP0 enables access to PORTs
+        errorlevel +302         ; Enable banking message again
         clrf    PORTB
 
-        clrf    disp_index              ; initialise display index and
-        clrf    disp_timer              ; display multiplex timer
-
-        movlw   BLANK                   ; blank character as dummy ...
-        movwf   digit_8                 ; for the lowest frequency display range
+        clrf    disp_index      ; initialise display index and
+        clrf    disp_timer      ; display multiplex timer
+        movlw   BLANK           ; blank character as dummy ...
+        movwf   digit_8         ; for the lowest frequency display range
 IF (DEBUG == 1)
-        movlw   TEST                    ; test all LED segments
+        movlw   TEST            ; test all LED segments
         call    ConvChar0
         movlw   TEST
         call    ConvChar1
@@ -603,22 +602,22 @@ IF (DEBUG == 1)
 
         ; Do a LAMP TEST for half a second, including all decimal points :
         MOVLx16 LAMPTEST_LOOPS, gatecnt
-        call    CountPulses             ; some delay to show the test pattern
+        call    CountPulses     ; some delay to show the test pattern
 ENDIF
         ; Blank the display until 1st measurement is available :
         call    ClearDisplay
 
-        movlw   PSC_DIV_BY_256          ; let the prescaler divide by 256 while testing..
-        call    SetPrescaler            ; safely write <W> into option register
+        movlw   PSC_DIV_BY_256  ; let the prescaler divide by 256 while testing..
+        call    SetPrescaler    ; safely write <W> into option register
 
-        clrf    modebits                ; set default mode (frequency counter)
-        movlw   options                 ; destination address for reading from EEPROM..
-        movwf   FSR                     ;
-        movlw   EEPROM_ADR_OPTIONS      ; load EEPROM-internal offset of "options"-byte
-        call    EEPROM_ReadByte         ; read single byte from EEPROM: options := EEEPROM[W]
-        movlw   OPTION_MASK             ; restore only the valid options
+        clrf    modebits        ; set default mode (frequency counter)
+        movlw   options         ; destination address for reading from EEPROM..
+        movwf   FSR             ;
+        movlw   EEPROM_ADR_OPTIONS ; load EEPROM-internal offset of "options"-byte
+        call    EEPROM_ReadByte ; read single byte from EEPROM: options := EEEPROM[W]
+        movlw   OPTION_MASK     ; restore only the valid options
         andwf   options, f
-        clrf    bTemp                   ; clear button press marker
+        clrf    bTemp           ; clear button press marker
 switch_mode:
         call    ShowMode
         movlw   (LAMPTEST_LOOPS)>>8     ; high byte for 0.5 second lamp test
@@ -626,20 +625,20 @@ switch_mode:
         movlw   (LAMPTEST_LOOPS)&0xff   ; low byte for 0.5 second lamp test
         movwf   gatecnt_lo
         call    CountPulses
-        btfsc   PUSH_BUTTON             ; check the switch
-        goto    save_mode               ; not pressed: save and go ...
-        bsf     bTemp, 0                ; remenber the pressed state
-        movlw   EVENT_MASK              ; pressed: next setting
-        xorwf   options, f              ; change mode
+        btfsc   PUSH_BUTTON     ; check the switch
+        goto    save_mode       ; not pressed: save and go ...
+        bsf     bTemp, 0        ; remenber the pressed state
+        movlw   EVENT_MASK      ; pressed: next setting
+        xorwf   options, f      ; change mode
         goto    switch_mode
 save_mode:
-        btfss   bTemp, 0                ; button was not pressed and released
-        goto    MainLoop                ; .. do not write EEPROM
-        movlw   OPTION_MASK             ; save only the options
+        btfss   bTemp, 0        ; button was not pressed and released
+        goto    MainLoop        ; .. do not write EEPROM
+        movlw   OPTION_MASK     ; save only the options
         andwf   options, f
-        movlw   options                 ; .. and store in EEPROM
+        movlw   options         ; .. and store in EEPROM
         movwf   FSR
-        movlw   EEPROM_ADR_OPTIONS      ; load EEPROM-internal offset of "options"-byte
+        movlw   EEPROM_ADR_OPTIONS ; load EEPROM-internal offset of "options"-byte
         call    EEPROM_WriteByte
 
 
@@ -650,33 +649,33 @@ save_mode:
 ;--------------------------------------------------------------------------
 ;
 MainLoop:
-        clrf    freq2_hi                ; clear counter (for counter mode)
-        clrf    freq2_mh                ; bits 23..16
-        clrf    freq2_ml                ; bits 15..8
-        clrf    freq2_lo                ; bits  7..0
+        clrf    freq2_hi        ; clear counter (for counter mode)
+        clrf    freq2_mh        ; bits 23..16
+        clrf    freq2_ml        ; bits 15..8
+        clrf    freq2_lo        ; bits  7..0
         clrf    t0dark
         clrf    t0last
         ; re-initialise ports
         ; ex: tris  PORTA;   tris  PORTB
-        errorlevel -302 ; Turn off banking message for the next few instructions..
-        bsf     STATUS, RP0             ;! setting RP0 enables access to TRIS regs
-        movlw   PORT_A_IO               ;!
-        movwf   PORTA                   ;! looks like PORTA but is in fact TRISA
-        movlw   PORT_B_IO               ;!
-        movwf   PORTB                   ;! looks like PORTB but is in fact TRISB
-        bcf     STATUS, RP0             ;! clearing RP0 enables access to PORTs
-        clrwdt                          ; configure TMR0... but clear watchdog timer first
-        movlw   b'00100000'             ; value for OPTION reg: edge - low-to-high transition,
-                                        ;  + prescaler assigned to Timer 0, 1:2
-        bsf     STATUS, RP0             ;! setting RP0 enables access to OPTION reg
+        errorlevel -302         ; Turn off banking message for the next few instructions..
+        bsf     STATUS, RP0     ;! setting RP0 enables access to TRIS regs
+        movlw   PORT_A_IO       ;!
+        movwf   PORTA           ;! looks like PORTA but is in fact TRISA
+        movlw   PORT_B_IO       ;!
+        movwf   PORTB           ;! looks like PORTB but is in fact TRISB
+        bcf     STATUS, RP0     ;! clearing RP0 enables access to PORTs
+        clrwdt                  ; configure TMR0... but clear watchdog timer first
+        movlw   b'00100000'     ; value for OPTION reg: edge - low-to-high transition,
+                                ;  + prescaler assigned to Timer 0, 1:2
+        bsf     STATUS, RP0     ;! setting RP0 enables access to OPTION reg
         ; option register is in bank1. i know. thanks for the warning.
-        movwf   OPTION_REG              ;! ex: "option" command (yucc)
-        bcf     STATUS, RP0             ;! clearing RP0 for normal register access
-        errorlevel +302 ; Enable banking message again
+        movwf   OPTION_REG      ;! ex: "option" command (yucc)
+        bcf     STATUS, RP0     ;! clearing RP0 for normal register access
+        errorlevel +302         ; Enable banking message again
 
         ; check for event counting
-        btfsc   EVENT                   ; if in event mode
-        goto    EventCount              ; .. enter event counting
+        btfsc   EVENT           ; if in event mode
+        goto    EventCount      ; .. enter event counting
 
         ; First do a 'range-detection measurement' to find
         ; a suitable prescaler ratio. Worst-case-estimation:
@@ -688,13 +687,13 @@ MainLoop:
         ; was almost reached when tested with a PIC 16F628.
         ; The range-detection interval is somewhere near 1/25 seconds (see RANGE_DET_LOOPS),
         ; so frequencies below 25*64 = 1600 Hz are not detectable at this step.
-RANGE_DET_LOOPS equ  CLOCK/(25*CYCLES)   ; number of gate-time loops to detect the MEASURING RANGE
-                                         ; (which is required to find a good prescaler value)
+RANGE_DET_LOOPS equ  CLOCK/(25*CYCLES) ; number of gate-time loops to detect the MEASURING RANGE
+                                       ; (which is required to find a good prescaler value)
         MOVLx16 RANGE_DET_LOOPS, gatecnt ; RANGE DETECTION loop counter
-        movlw   PSC_DIV_BY_64            ; let the prescaler divide by 64 while testing..
-        call    SetPrescaler             ; safely write <W> into option register
+        movlw   PSC_DIV_BY_64           ; let the prescaler divide by 64 while testing..
+        call    SetPrescaler            ; safely write <W> into option register
 
-        call    CountPulses              ; count pulses for the range detection interval (1/25 sec)
+        call    CountPulses            ; count pulses for the range detection interval (1/25 sec)
         ; The result will be placed in freq_lo,freq_ml,freq_mh,freq_hi (32 bit)
         ; but the max count at 64 MHz input, 1/25 sec gate time, and prescaler=64 will be:
         ;   64MHz / (25 * 64) = 40000 pulses, so only 16 bits in the counter
@@ -732,17 +731,17 @@ RANGE_DET_LOOPS equ  CLOCK/(25*CYCLES)   ; number of gate-time loops to detect t
         ; from 4Hz to 8Hz in the range from 1..4MHz but is no issue because we can anyway
         ; only see the top 5 digits (display resolution 100Hz)."
         ; Ranges for 20 MHz CRYSTAL (Loop time = 1/25 s)
-        ; Range  testcount       f_in     presc. gate_time   display  resol. last digit step
-        ; (1)      0..63      ..  100 kHz   1    1   second  XX„XXX    1 Hz  1
-        ; (2)     64..255     ..  408 kHz   2    1   second  XXX„XX    2 Hz  1
-        ; (2)    256..511     ..  817 KHz   2    1   second  X.XXXX    2 Hz  1
-        ; (2)    512..1023    ..  1.6 MHz   2    1   second  X.XXXX    2 Hz  1
-        ; (4)   1024..2047    ..  3.2 MHz   2    1/2 second  X.XXXX    4 Hz  1
-        ; (8)   2048..4095    ..  6.5 MHz   4    1/2 second  X.XXXX    8 Hz  1
-        ; (16)  4096..8191    ..   13 MHz   8    1/2 second  X.XXXX   16 Hz  1
-        ; (32)  8192..16383   ..   26 MHz  16    1/2 second  X.XXXX   32 Hz  1
-        ; (64) 16384..32767   ..   52 MHz  32    1/2 second  XX.XXX   64 Hz  1
-        ; (64) 32768..40000   ..   64 MHz  32    1/2 second  XX.XXX   64 Hz  1
+        ; Range  testcount       f_in     presc. gate_time   resol. last digit step
+        ; (1)      0..63      ..  100 kHz   1    1   second   1 Hz  1
+        ; (2)     64..255     ..  408 kHz   2    1   second   2 Hz  1
+        ; (2)    256..511     ..  817 KHz   2    1   second   2 Hz  1
+        ; (2)    512..1023    ..  1.6 MHz   2    1   second   2 Hz  1
+        ; (4)   1024..2047    ..  3.2 MHz   2    1/2 second   4 Hz  1
+        ; (8)   2048..4095    ..  6.5 MHz   4    1/2 second   8 Hz  1
+        ; (16)  4096..8191    ..   13 MHz   8    1/2 second  16 Hz  1
+        ; (32)  8192..16383   ..   26 MHz  16    1/2 second  32 Hz  1
+        ; (64) 16384..32767   ..   52 MHz  32    1/2 second  64 Hz  1
+        ; (64) 32768..40000   ..   64 MHz  32    1/2 second  64 Hz  1
         ;
         movf    freq_ml, w      ; first look at bits 15..8 of the 'test count' result
         andlw   b'11000000'     ; any of bits 15..14 set (>=16384, 26 MHz..) -> no Z flag -> range 64
@@ -778,17 +777,17 @@ range1:
         ; async prescaler off, 1 second gate time for low frequencies
         call    PrescalerOff    ; turn hardware prescaler off
         ; Load the GATE TIMER (as count of loops) for this measuring range.
-        MOVLx16 GATE_TIME_LOOPS,gatecnt    ; 1 second gate time
+        MOVLx16 GATE_TIME_LOOPS,gatecnt ; 1 second gate time
         ; Load the count of "left shifts" to compensate gate time + prescaler :
         movlw   0   ; no need to multiply with prescaler 1:1 and 1-sec gate time
         goto    go_measure
 
 range2:
-        btfss   PUSH_BUTTON             ; if "zoom" switch is low (pressed) ..
-        goto    range1_zoom             ; .. calibration zoom
+        btfss   PUSH_BUTTON     ; if "zoom" switch is low (pressed) ..
+        goto    range1_zoom     ; .. calibration zoom
         ; async prescaler /2 , gate time = 1 second
-        movlw   PSC_DIV_BY_2            ; let the prescaler divide by 2 while MEASURING...
-        call    SetPrescaler            ; safely write <W> into option register
+        movlw   PSC_DIV_BY_2    ; let the prescaler divide by 2 while MEASURING...
+        call    SetPrescaler    ; safely write <W> into option register
         ; Load the GATE TIMER (as count of loops) for this measuring range.
         MOVLx16 GATE_TIME_LOOPS, gatecnt ; 1 second gate time
         ; Load the count of "left shifts" to compensate gate time + prescaler :
@@ -796,11 +795,11 @@ range2:
         goto    go_measure
 
 range4:
-        btfss   PUSH_BUTTON             ; if switch is low (pressed) ..
-        goto    range1_zoom             ; .. calibration zoom
+        btfss   PUSH_BUTTON     ; if switch is low (pressed) ..
+        goto    range1_zoom     ; .. calibration zoom
         ; async prescaler /2 , gate time = default (1/2 second)
-        movlw   PSC_DIV_BY_2            ; let the prescaler divide by 2 while MEASURING...
-        call    SetPrescaler            ; safely write <W> into option register
+        movlw   PSC_DIV_BY_2    ; let the prescaler divide by 2 while MEASURING...
+        call    SetPrescaler    ; safely write <W> into option register
         ; Load the GATE TIMER (as count of loops) for this measuring range.
         ; MOVLx16 GATE_TIME_LOOPS/.2, gatecnt ; 1/2 second gate time
         ; Load the count of "left shifts" to compensate gate time + prescaler :
@@ -809,40 +808,41 @@ range4:
 
 range8:
         ; async prescaler /4, gate time = default (1/2 second)
-        movlw   PSC_DIV_BY_4            ; let the prescaler divide by 4 while MEASURING...
-        call    SetPrescaler            ; safely write <W> into option register
+        movlw   PSC_DIV_BY_4    ; let the prescaler divide by 4 while MEASURING...
+        call    SetPrescaler    ; safely write <W> into option register
         movlw   3   ; multiply by 8 (=2^3) later to compensate prescaling (1/4) * gate time (1/2 s)
         goto    go_measure
 
 range16:
         ; async prescaler /8, gate time = default (1/2 second)
-        movlw   PSC_DIV_BY_8            ; let the prescaler divide by 8 while MEASURING...
-        call    SetPrescaler            ; safely write <W> into option register
+        movlw   PSC_DIV_BY_8    ; let the prescaler divide by 8 while MEASURING...
+        call    SetPrescaler    ; safely write <W> into option register
         movlw   4   ; multiply by 16 (=2^4) later to compensate prescaling (1/8) * gate time (1/2 s)
         goto    go_measure
 
 range32:
         ; async prescaler /16, gate time = default (1/2 second)
-        movlw   PSC_DIV_BY_16            ; let the prescaler divide by 16 while MEASURING...
-        call    SetPrescaler            ; safely write <W> into option register
+        movlw   PSC_DIV_BY_16   ; let the prescaler divide by 16 while MEASURING...
+        call    SetPrescaler    ; safely write <W> into option register
         movlw   5   ; multiply by 32 (=2^5) later to compensate prescaling (1/16) * gate time (1/2 s)
         goto    go_measure
 
 range64:
         ; async prescaler /32, gate time = default (1/2 second)
-        movlw   PSC_DIV_BY_32           ; let the prescaler divide by 32 while MEASURING...
-        call    SetPrescaler            ; safely write <W> into option register
+        movlw   PSC_DIV_BY_32   ; let the prescaler divide by 32 while MEASURING...
+        call    SetPrescaler    ; safely write <W> into option register
         movlw   6   ; multiply by 64 (=2^6) later to compensate prescaling (1/32) * gate time (1/2 s)
 
 go_measure:
-        movwf   adjust_shifts           ; save the number of "arithmetic left shifts" for later
+        movwf   adjust_shifts   ; save the number of "arithmetic left shifts" for later
 
         ; measure frequency
-        call    CountPulses    ; count pulses for 1, 1/2, 1/4, or 1/8 s
+        call    CountPulses     ; count pulses for 1, 1/2, 1/4, or 1/8 s
         ; Result in freq_lo,freq_ml,freq_mh,freq_hi (32 bit) now,
         ; NOT adjusted for the gate-time or prescaler division ratio yet.
 
-prep_disp: ; Prepare the frequency (32-bit 'unadjusted' integer) for display:
+prep_disp:
+        ; Prepare the frequency (32-bit 'unadjusted' integer) for display:
         ; Multiply freq by 2^adjust_shifts to adjust for the prescaling
         ; and the timing period.  The result will be a frequency in HERTZ, 32-bit integer.
         ; Note: the adjustment factor may be ONE which means no shift at all.
@@ -882,15 +882,16 @@ p_zero: movf    pcnt, f         ; zero periods? This could happen at very low
         movlw   ONESECOND & 0xff
         movwf   period_lo
 
-        ; TheHWcave:  This section adjusts the conversion factor for the number
-        ;             of periods we have measured. When we later divide by the
-        ;             sum of the measured periods, we effectively average
-        ;             across the number of periods
+        ; TheHWcave:
+        ;   This section adjusts the conversion factor for the number
+        ;   of periods we have measured. When we later divide by the
+        ;   sum of the measured periods, we effectively average
+        ;   across the number of periods
         ;
-        ;             conversion = conversion * number_of_periods (pcnt)
+        ;   conversion = conversion * number_of_periods (pcnt)
         ;
-        ;             the multiplication is done by repeated adding and it gets
-        ;             big, so 32-bit mode is needed
+        ;   the multiplication is done by repeated adding and it gets
+        ;   big, so 32-bit mode is needed
         ;
         ;
 p_conv:                         ; come here if f < 1000 Hz
@@ -949,18 +950,19 @@ p_mul:  ; freq := pcnt * freq2 (8bit * 32bit -> 32bit)
         goto    p_mul
         ; p_mul end
 
-        ; TheHWcave:  This section divides the adjusted conversion factor "freq" by the
-        ;             sum of the periods "period". This is a 32-bit divided by 16-bit
-        ;             operation using repeated 32-bit subtraction. The result is
-        ;             a 24-bit number "freq" which is the desired frequency (in millihertz).
+        ; TheHWcave:
+        ;   This section divides the adjusted conversion factor "freq" by the
+        ;   sum of the periods "period". This is a 32-bit divided by 16-bit
+        ;   operation using repeated 32-bit subtraction. The result is
+        ;   a 24-bit number "freq" which is the desired frequency (in millihertz).
         ;
-        ;             This calculation takes so much time that the watchdog timer
-        ;             would trigger and because the display multiplexing is stopped
-        ;             the last digit would be extremly bright and destroy the display
-        ;             I tried turning the display off, which works but causes a very
-        ;             irritating blinking display. So .. there is no choice, we have
-        ;             to keep multiplexing the display during the division which
-        ;             makes the calculation even slower..
+        ;   This calculation takes so much time that the watchdog timer
+        ;   would trigger and because the display multiplexing is stopped
+        ;   the last digit would be extremly bright and destroy the display
+        ;   I tried turning the display off, which works but causes a very
+        ;   irritating blinking display. So .. there is no choice, we have
+        ;   to keep multiplexing the display during the division which
+        ;   makes the calculation even slower..
 
         clrf    freq2_hi
         clrf    freq2_mh
@@ -1050,7 +1052,7 @@ event_loop:
         MOVLx16 GATE_TIME_LOOPS/10, gatecnt ; 1/10 second gate time
         call    CountPulses                 ; count pulses for 1/10s
         ; Result in freq_lo,freq_ml,freq_mh,freq_hi (32 bit) now
-        ADDx32  freq, freq2 ; freq2 = freq2 + freq
+        ADDx32  freq, freq2     ; freq2 = freq2 + freq
         ;
         ; add any counts that happened during "dark time"
         movf    t0dark, w
@@ -1167,7 +1169,7 @@ count1: movf    disp_index, w   ; [1] get the current digit number (disp_index =
         movf    INDF, w         ; [12] w := *(FSR) use indirection register to read from table
         movwf   LEDS_PORT       ; [13] set the LED segments
         movf    bTemp, w        ; [14] get the mupliplexer pattern (hurry, hurry !)
-        movwf   ENABLE_PORT     ; [15] set the LED multiplexer
+        movwf   MUX_PORT        ; [15] set the LED multiplexer
 
         incf    disp_timer, f   ; [16] increment display-multiplex timer
         btfsc   disp_timer, 6   ; [17] (6-bit prescaler)
@@ -1217,27 +1219,28 @@ count1: movf    disp_index, w   ; [1] get the current digit number (disp_index =
         clrwdt                  ; [42] (ex: nop, but since 2006-05-28 the dog must be fed!)
         ;
 
-        ; TheHWcave:    Measure period(s) in 20 uS units
-        ;               The original software aready kept a copy of the timer0 content
-        ;               at the previous loop, so we can use this to detect when the counter
-        ;               has changed. Because we are only interested in very low frequencies
-        ;               we can safely detect a single increment and there will be lots of loops
-        ;               with no change at all. The loop count (gatecnt) is counting down
-        ;               from 50000 (=1 second) and each count represents 20 us
+        ; TheHWcave:
+        ;   Measure period(s) in 20 uS units
+        ;   The original software aready kept a copy of the timer0 content
+        ;   at the previous loop, so we can use this to detect when the counter
+        ;   has changed. Because we are only interested in very low frequencies
+        ;   we can safely detect a single increment and there will be lots of loops
+        ;   with no change at all. The loop count (gatecnt) is counting down
+        ;   from 50000 (=1 second) and each count represents 20 us
         ;
-        ;               The idea is that if freq_lo changes to 1 we take copy of the gatecnt in pstart
-        ;               and for every subsequent frequency change, we calculate the difference between the current
-        ;               gatecnt and pstart which is the accumulated elapsed time (period) in 20 us units
-        ;               units. We also keep a counter pcnt to allow calculating the average period later
-        ;               for better resolution
+        ;   The idea is that if freq_lo changes to 1 we take copy of the gatecnt in pstart
+        ;   and for every subsequent frequency change, we calculate the difference between the current
+        ;   gatecnt and pstart which is the accumulated elapsed time (period) in 20 us units
+        ;   units. We also keep a counter pcnt to allow calculating the average period later
+        ;   for better resolution
         ;
-        ;               Note 1: We can only start measuring after the frequency counter value has reached
-        ;               1 because the time from 0 to 1 is undetermined (the external signal is asynchronous)
-        ;               This means we need at least 1 Hz for this to produce period measurements.
+        ;   Note 1: We can only start measuring after the frequency counter value has reached
+        ;   1 because the time from 0 to 1 is undetermined (the external signal is asynchronous)
+        ;   This means we need at least 1 Hz for this to produce period measurements.
         ;
-        ;               Note 2: This method could create a pcnt that can get too high for the subsequent 32-bit maths
-        ;               Therefore there is a check to stop accumulating periods and incrementing pcnt if
-        ;               80 (in frequency mode) or 140 (in RPM) mode is reached
+        ;   Note 2: This method could create a pcnt that can get too high for the subsequent 32-bit maths
+        ;   Therefore there is a check to stop accumulating periods and incrementing pcnt if
+        ;   80 (in frequency mode) or 140 (in RPM) mode is reached
         ;
         ;
         ;
@@ -1398,7 +1401,7 @@ CvtAndDisplayFreq:              ; Convert <freq>(32 bit integer) to 9 BCD-digits
         ;
         MOVLx32 9999999, freq2
         SUBx32  freq, freq2     ; freq2 = freq2 - freq; // C set when freq <= freq2
-        bc      check_1M         ; C = ( freq < 10M ) goto next check 1M
+        bc      check_1M        ; C = ( freq < 10M ) goto next check 1M
         clrf    freq2_hi
         clrf    freq2_mh
         movlw   (500 >> 8) & 0xff
@@ -1411,7 +1414,7 @@ CvtAndDisplayFreq:              ; Convert <freq>(32 bit integer) to 9 BCD-digits
 check_1M:
         MOVLx32 999999, freq2
         SUBx32  freq, freq2     ; C = ( freq < 1M )
-        bc      check_100k       ; goto next check 100k
+        bc      check_100k      ; goto next check 100k
         clrf    freq2_hi
         clrf    freq2_mh
         clrf    freq2_ml
@@ -1423,7 +1426,7 @@ check_1M:
 check_100k:
         MOVLx32 99999, freq2
         SUBx32  freq, freq2     ; C = ( freq < 100k )
-        bc      no_round         ; goto end
+        bc      no_round        ; goto end
         clrf    freq2_hi
         clrf    freq2_mh
         clrf    freq2_ml
@@ -1688,16 +1691,16 @@ RefreshDisplay:
         ; TheHWCave: This is a straight copy from the timing loop
         ; except the watchdog timer is included as well
         ;
-        movf    disp_index, w   ; [1] get the current digit number (disp_index = 0..4)
+        movf    disp_index, w   ; [1]  get the current digit number (disp_index = 0..4)
         call    Digit2MuxValue  ; [2,3,4,5,6,7] display (6 commands including call+retlw)
-        movwf   bTemp           ; [8] save the bit pattern for the multiplexer port
+        movwf   bTemp           ; [8]  save the bit pattern for the multiplexer port
         movlw   display0        ; [9]  get the LED display data for the current digit...
         addwf   disp_index, w   ; [10] add current digit number to address of LED data
         movwf   FSR             ; [11] move address into the PIC's poor 'data pointer'
         movf    INDF, w         ; [12] w := *(FSR) use indirection register to read from table
         movwf   LEDS_PORT       ; [13] set the LED segments
         movf    bTemp, w        ; [14] get the mupliplexer pattern (hurry, hurry !)
-        movwf   ENABLE_PORT     ; [15] set the LED multiplexer
+        movwf   MUX_PORT        ; [15] set the LED multiplexer
 
         incf    disp_timer, f   ; [16] increment display-multiplex timer
         btfsc   disp_timer, 6   ; [17] (6-bit prescaler)
@@ -1848,30 +1851,31 @@ ClearDisplay:
         ;           In the PIC16F84, some were in BANK0 others in BANK1..
         ; In the PIC16F628, things are much different... all EEPROM regs are in BANK1 !
 EEPROM_WriteByte:               ; save "INDF" = *FSR   in EEPROM[<w>]
-         bcf     INTCON, GIE    ; disable INTs
-         errorlevel -302        ; Turn off banking message for the next few instructions..
-         bsf     STATUS, RP0    ;!; Bank1 for "EEADR" access, PIC16F628 ONLY (not F84)
-         movwf   EEADR          ;!; write into EEPROM address register (BANK1 !!)
-         bcf     STATUS, RP0    ;!; Bank0 to read "bStorageData"
-         movfw   INDF           ; ; w := *FSR (read source data from BANK 0)
-         bsf     STATUS, RP0    ;!; Bank1 for "EEDATA" access, PIC16F628 ONLY (not F84)
-         movwf   EEDATA         ;!; EEDATA(in BANK1) := w  (BANK1; F628 only, NOT F84 !!!)
-         bsf     EECON1, WREN   ;!; set WRite ENable
-         bcf     INTCON, GIE    ;!; Is this REALLY required as in DS40300B Example 13-2 ?
-         movlw   055h           ;!;
-         movwf   EECON2         ;!; write 55h
-         movlw   0AAh           ;!;
-         movwf   EECON2         ;!; write AAh
-         bsf     EECON1, WR     ;!; set WR bit, begin write
-         ; wait until write access to the EEPROM is complete.
-save_ew: btfsc   EECON1, WR     ;!; WR is cleared after completion of write
-         goto    save_ew        ;!; WR=1, write access not finished yet
-         ; Arrived here: the EEPROM write is ready
-         bcf     EECON1, WREN   ;!; disable further WRites
-         bcf     STATUS, RP0    ;!; Bank0 for normal access
-         errorlevel +302        ; Enable banking message again
-   ;     bsf     INTCON, GIE    ; enable INTs ? NOT IN THIS APPLICATION !
-         retlw   0              ; end EEPROM_WriteByte
+        bcf     INTCON, GIE     ; disable INTs
+        errorlevel -302         ; Turn off banking message for the next few instructions..
+        bsf     STATUS, RP0     ;!; Bank1 for "EEADR" access, PIC16F628 ONLY (not F84)
+        movwf   EEADR           ;!; write into EEPROM address register (BANK1 !!)
+        bcf     STATUS, RP0     ;!; Bank0 to read "bStorageData"
+        movfw   INDF            ; ; w := *FSR (read source data from BANK 0)
+        bsf     STATUS, RP0     ;!; Bank1 for "EEDATA" access, PIC16F628 ONLY (not F84)
+        movwf   EEDATA          ;!; EEDATA(in BANK1) := w  (BANK1; F628 only, NOT F84 !!!)
+        bsf     EECON1, WREN    ;!; set WRite ENable
+        bcf     INTCON, GIE     ;!; Is this REALLY required as in DS40300B Example 13-2 ?
+        movlw   055h            ;!;
+        movwf   EECON2          ;!; write 55h
+        movlw   0AAh            ;!;
+        movwf   EECON2          ;!; write AAh
+        bsf     EECON1, WR      ;!; set WR bit, begin write
+        ; wait until write access to the EEPROM is complete.
+save_ew:
+        btfsc   EECON1, WR      ;!; WR is cleared after completion of write
+        goto    save_ew         ;!; WR=1, write access not finished yet
+        ; Arrived here: the EEPROM write is ready
+        bcf     EECON1, WREN    ;!; disable further WRites
+        bcf     STATUS, RP0     ;!; Bank0 for normal access
+        errorlevel +302         ; Enable banking message again
+   ;    bsf     INTCON, GIE     ; enable INTs ? NOT IN THIS APPLICATION !
+        retlw   0               ; end EEPROM_WriteByte
 
 
 ;--------------------------------------------------------------------------

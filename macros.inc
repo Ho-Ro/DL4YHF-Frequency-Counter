@@ -6,12 +6,12 @@
 ;                                                                         *
 ;**************************************************************************
 
-CQUAD   macro value
-        retlw value>>24                ; high byte
-        retlw (value>>16)&0xFF         ; middle-high byte
-        retlw (value>>8)&0xFF          ; middle-low  byte
-        retlw value&0xFF               ; low byte
-        endm
+CQUAD   MACRO   value
+        retlw   value>>24       ; high byte
+        retlw   (value>>16)&0xFF; middle-high byte
+        retlw   (value>>8)&0xFF ; middle-low  byte
+        retlw   value&0xFF      ; low byte
+        ENDM
 
 ;--------------------------------------------------------------------------
 ; MACRO to perform 32-bit subtraction - subtracts the four bytes at src
@@ -19,27 +19,27 @@ CQUAD   macro value
 ; result in dst with src unchanged and the no carry flag set if underflow
 ;--------------------------------------------------------------------------
 
-SUBx32  macro src, dst          ;dst := dst - src
+SUBx32  MACRO   src, dst        ;dst := dst - src
 
-        bsf STATUS, C
-        movf src+3,w
-        btfss STATUS, C
-        incfsz src+3,w
-        subwf dst+3,f
-        movf src+2,w
-        btfss STATUS, C
-        incfsz src+2,w
-        subwf dst+2,f
-        movf src+1,w
-        btfss STATUS, C
-        incfsz src+1,w
-        subwf dst+1,f
-        movf src+0,w
-        btfss STATUS, C
-        incfsz src+0,w
-        subwf dst+0,f
+        bsf     STATUS, C
+        movf    src+3, w
+        btfss   STATUS, C
+        incfsz  src+3, w
+        subwf   dst+3, f
+        movf    src+2, w
+        btfss   STATUS, C
+        incfsz  src+2, w
+        subwf   dst+2, f
+        movf    src+1, w
+        btfss   STATUS, C
+        incfsz  src+1, w
+        subwf   dst+1, f
+        movf    src+0, w
+        btfss   STATUS, C
+        incfsz  src+0, w
+        subwf   dst+0, f
 
-        endm
+        ENDM
 
 
 ;--------------------------------------------------------------------------
@@ -48,19 +48,19 @@ SUBx32  macro src, dst          ;dst := dst - src
 ; result in dst with src unchanged and the no carry flag set if underflow
 ;--------------------------------------------------------------------------
 
-SUBx16  macro src, dst          ;dst := dst - src
+SUBx16  MACRO   src, dst        ;dst := dst - src
 
-        bsf STATUS, C
-        movf src+1,w
-        btfss STATUS, C
-        incfsz src+1,w
-        subwf dst+1,f
-        movf src+0,w
-        btfss STATUS, C
-        incfsz src+0,w
-        subwf dst+0,f
+        bsf     STATUS, C
+        movf    src+1, w
+        btfss   STATUS, C
+        incfsz  src+1, w
+        subwf   dst+1, f
+        movf    src+0, w
+        btfss   STATUS, C
+        incfsz  src+0, w
+        subwf   dst+0, f
 
-        endm
+        ENDM
 
 
 ;--------------------------------------------------------------------------
@@ -69,27 +69,27 @@ SUBx16  macro src, dst          ;dst := dst - src
 ; result in dst with src unchanged and the no carry flag set if underflow
 ;--------------------------------------------------------------------------
 
-ADDx32  macro src, dst          ;dst := dst + src
+ADDx32  MACRO   src, dst          ;dst := dst + src
 
-        bcf STATUS, C
-        movf src+3,w
-        btfsc STATUS, C
-        incfsz src+3,w
-        addwf dst+3,f
-        movf src+2,w
-        btfsc STATUS, C
-        incfsz src+2,w
-        addwf dst+2,f
-        movf src+1,w
-        btfsc STATUS, C
-        incfsz src+1,w
-        addwf dst+1,f
-        movf src+0,w
-        btfsc STATUS, C
-        incfsz src+0,w
-        addwf dst+0,f
+        bcf     STATUS, C
+        movf    src+3, w
+        btfsc   STATUS, C
+        incfsz  src+3, w
+        addwf   dst+3, f
+        movf    src+2, w
+        btfsc   STATUS, C
+        incfsz  src+2, w
+        addwf   dst+2, f
+        movf    src+1, w
+        btfsc   STATUS, C
+        incfsz  src+1, w
+        addwf   dst+1, f
+        movf    src+0, w
+        btfsc   STATUS, C
+        incfsz  src+0, w
+        addwf   dst+0, f
 
-        endm
+        ENDM
 
 
 ;--------------------------------------------------------------------------
@@ -97,7 +97,7 @@ ADDx32  macro src, dst          ;dst := dst + src
 ; (most significant bytes first), returns the result in dst
 ;--------------------------------------------------------------------------
 
-MOVLx32 macro   lit, dst        ;dst := lit
+MOVLx32 MACRO   lit, dst        ;dst := lit
 
         movlw   (lit >> 24) & 0xff
         movwf   dst
@@ -108,17 +108,17 @@ MOVLx32 macro   lit, dst        ;dst := lit
         movlw   lit & 0xff
         movwf   dst+3
 
-        endm
+        ENDM
 
 
-MOVLx16 macro   lit, dst        ;dst := lit
+MOVLx16 MACRO   lit, dst        ;dst := lit
 
         movlw   (lit >> 8) & 0xff
         movwf   dst
         movlw   lit & 0ffh
         movwf   dst+1
 
-        endm
+        ENDM
 
 
 ;**************************************************************************
