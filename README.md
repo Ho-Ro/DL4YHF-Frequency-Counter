@@ -13,10 +13,10 @@ requires Wolfgang's so-called display variant #2 (see below) with common cathode
 
 ![Display variant #2](HW/picboard5_sch.gif)
 
-### The Cheap DIY Kit
+### The Cheap DIY Kits
 ![Crystal Oscillator Frequency Counter Tester](https://raw.githubusercontent.com/tardate/LittleArduinoProjects/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_build.jpg)
 
-This variant #2 is available as an inexpensive *"Crystal Oscillator Frequency Counter Tester"* 
+This variant #2 is available as the inexpensive red *"Crystal Oscillator Frequency Counter Tester"*
 DIY kit from several sources from China, which offers the counter core
 plus an additional crystal test oscillator, see the schematics below that were provided by
 [tardate](https://github.com/tardate/LittleArduinoProjects/tree/master/Equipment/FrequencyCounterKit)
@@ -24,8 +24,14 @@ under his [MIT license](https://github.com/tardate/LittleArduinoProjects/blob/ma
 
 ![Crystal Oscillator Frequency Counter Tester Schematics](https://github.com/tardate/LittleArduinoProjects/blob/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_schematic.jpg?raw=true)
 
+Another [green variant](https://chinese-electronics-products-tested.blogspot.com/p/50-mhz-frequency-counter-kit-tested.html)
+labelled *"DIY Kit 1Hz-75MHz Frequency Counter 7V-9V 50mA"*, consisting of two PCBs (display and electronics)
+offers a BNC connector and a sensitive preamplifier instead of the less useful quartz tester.
+
+![DIY Kit 1Hz-75MHz Frequency Counter 7V-9V 50mA](https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4eLjvjyL80Aeonhr875LrPGzBLja5WSlLF28pPPLpdAliLdOlRDhCuatvQQU8p-ljqD_RxjW-cwmKYMJjIIJ4zy8HygKsp17rsDtLxUNmDuUro3yzWTfrv8IJ8ax9IDsiLVq-08W-QYPB-kGJ_2LnlJ-kUR4LKAIO_Oybg1GkARh8Kd6In5lJR-eC/s800/50MHz-frequency-counter-tested-11.JPG)
+
 #### HW Modifications
-If you build the counter you should omit the not-so-reliable crystal test oscillator section in the lower left of the schematics
+If you build the *red* counter you should omit the not-so-reliable crystal test oscillator section in the lower left of the schematics
 or even [convert it to a simple preamplifier](https://youtu.be/0BxpMm6SLoE?t=284).
 
 ## Firmware
