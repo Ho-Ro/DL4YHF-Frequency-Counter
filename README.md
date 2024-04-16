@@ -46,7 +46,7 @@ that allows several processor plugging cycles.
 If you make changes to the firmware source code, the `*.hex` files can be recreated with the [GNU gpasm](https://gputils.sourceforge.io/).
 If you want to rebuild the firmware under Linux using the provided [Makefile](Makefile), simply type `make`.
 
-### 1. [counter_DL4YHF.asm](counter_DL4YHF.asm)
+### 1. [`counter_DL4YHF.asm`](counter_DL4YHF.asm)
 This version matches Wolfgang's original firmware, I have modified his source code [`DL4YHF/counter.asm`](DL4YHF/counter.asm)
 slightly so that it can be assembled with GNU `gpasm`. The resulting [`counter2_DL4YHF.hex`](counter2_DL4YHF.hex) file is identical
 to Wolfgang's original version [`DL4YHF/counter2.hex`](DL4YHF/counter2.hex). This can be tested with `make compare`.

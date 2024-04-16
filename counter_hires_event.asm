@@ -11,6 +11,10 @@
 ;            "Crystal Oscillator Frequency Counter Tester" for ~10€ or $  *
 ;                                                                         *
 ; REVISIONS: (latest entry first)                                         *
+; 2024-04-16 - Ho-Ro:                                                     *
+;              Version 1.0.00                                              *
+;              Reorganise RAM addresses, remove unused cells              *
+;              No functional changes, reformat source code                *
 ; 2024-04-05 - Ho-Ro:                                                     *
 ;              Improve event counter, keep 00000 while key pressed        *
 ;              Reformat source code                                       *
@@ -105,6 +109,7 @@
 
  #DEFINE DEBUG 0        ; DEBUG=1 for simulation, DEBUG=0 for real hardware
 
+ #DEFINE VERSION 0x1000 ; Version 1.0.00 store in IDLOCS
 
 ;**************************************************************************
 ;                                                                         *
@@ -230,9 +235,9 @@
 ;    __CONFIG   _CP_OFF & _WDT_OFF & _PWRTE_ON & _HS_OSC & _LVP_OFF & _BODEN_OFF & _MCLRE_OFF
 
 
-; '__IDLOCS' directive may be used to set the 4 * 4(?!?) ID Location Bits.
+; '__IDLOCS' directive may be used to set the 4 * 4 ID Location Bits.
 ; These shall be placed in the HEX file at addresses 0x2000...0x2003.
-;   __IDLOCS H'1234'
+    __IDLOCS VERSION
 
 
 
@@ -313,90 +318,80 @@ PER2FREQ3       equ  ONESECOND * 1000   ; convert periods into HZ with 3 decimal
 ;     with Microchip's simulator much easier (point the mouse on the name
 ;     of a variable to see what I mean !)
 ;
+; RAM start at 0x20
 ;
-tens_index      equ  0x27       ; index into the powers-of-ten table
-divi            equ  0x28       ; power of ten (32 bits)
-divi_hi         equ  0x28       ; same as 'divi' : HIGH byte
-divi_mh         equ  0x29       ; MEDIUM HIGH byte
-divi_ml         equ  0x2A       ; MEDIUM LOW  byte
-divi_lo         equ  0x2B       ; LOW byte
+tens_index      equ  0x20       ; index into the powers-of-ten table
+divi            equ  0x21       ; power of ten (32 bits)
+divi_hi         equ  0x21       ; SAME as 'divi' : HIGH byte
+divi_mh         equ  0x22       ; MEDIUM HIGH byte
+divi_ml         equ  0x23       ; MEDIUM LOW  byte
+divi_lo         equ  0x24       ; LOW byte
 
-timer0_old      equ  0x2C       ; previous reading from timer0 register
+timer0_old      equ  0x25       ; previous reading from timer0 register
 
-gatecnt         equ  0x2D       ; 16-bit counter (msb first)
-gatecnt_hi      equ  0x2D       ; same location, msb
-gatecnt_lo      equ  0x2E       ; lsb
+gatecnt         equ  0x26       ; 16-bit counter (msb first)
+gatecnt_hi      equ  0x26       ; SAME location, msb
+gatecnt_lo      equ  0x27       ; lsb
 
-bTemp           equ  0x2F       ; temporary 8-bit register,
+bTemp           equ  0x28       ; temporary 8-bit register,
                                 ; may be overwritten in ALL subroutines
 
-freq            equ  0x30       ; frequency in binary (32 bits)....
-freq_hi         equ  0x30       ; same location, begins with HIGH byte
-freq_mh         equ  0x31       ; ... medium high byte
-freq_ml         equ  0x32       ; ... medium low byte
-freq_lo         equ  0x33       ; ... low byte
+freq            equ  0x29       ; frequency in binary (32 bits)....
+freq_hi         equ  0x29       ; SAME location, begins with HIGH byte
+freq_mh         equ  0x2a       ; ... medium high byte
+freq_ml         equ  0x2b       ; ... medium low byte
+freq_lo         equ  0x2c       ; ... low byte
 
 
-freq2           equ  0x34       ; frequency too,
-freq2_hi        equ  0x34       ; same location, begins with HIGH byte
-freq2_mh        equ  0x35       ; ... medium high byte
-freq2_ml        equ  0x36       ; ... medium low byte
-freq2_lo        equ  0x37       ; ... low byte
+freq2           equ  0x2d       ; frequency too,
+freq2_hi        equ  0x2d       ; SAME location, begins with HIGH byte
+freq2_mh        equ  0x2e       ; ... medium high byte
+freq2_ml        equ  0x2f       ; ... medium low byte
+freq2_lo        equ  0x30       ; ... low byte
 
 
-pstart_hi       equ  0x38       ; holds the gatecnt at start of period measurement (high byte)
-pstart_lo       equ  0x39       ; ... low byte
+pstart_hi       equ  0x31       ; holds the gatecnt at start of period measurement (high byte)
+pstart_lo       equ  0x32       ; ... low byte
 
-t0dark          equ  0x3A       ; counter mode only: value tmr0 increased during dark time (outside CountPulses)
-t0last          equ  0x3B       ; counter mode only: value of tmr0 at the end of CountPulses
+t0dark          equ  0x33       ; counter mode only: value tmr0 increased during dark time (outside CountPulses)
+t0last          equ  0x34       ; counter mode only: value of tmr0 at the end of CountPulses
 
 
-menu_index      equ  0x3C       ; menu item for programming mode
-menu_timer      equ  0x3D       ; used to detect how long a key was pressed
+digits          equ  0x35       ; frequency as decimal digits (9 bytes)...
+digit_0         equ  0x35       ; SAME location as MOST SIGNIFICANT digit, 100-MHz
+digit_1         equ  0x36       ; usually the 10-MHz-digit
+digit_2         equ  0x37       ; usually the 1-MHz-digit
+digit_3         equ  0x38       ; usually the 100-kHz-digit
+digit_4         equ  0x39       ; usually the 10-kHz-digit
+digit_5         equ  0x3a       ; usually the 1-kHz-digit
+digit_6         equ  0x3b       ; usually the 100-Hz-digit
+digit_7         equ  0x3c       ; usually the 10-Hz-digit
+digit_8         equ  0x3d       ; usually the 1-Hz-digit
+digit_9         equ  0x3e       ; must contain a blank character (or trailing zero)
 
-digits          equ  0x40       ; frequency as decimal digits (9 bytes)...
-digit_0         equ  0x40       ; same location as MOST SIGNIFICANT digit, 100-MHz
-digit_1         equ  0x41       ; usually the 10-MHz-digit
-digit_2         equ  0x42       ; usually the 1-MHz-digit
-digit_3         equ  0x43       ; usually the 100-kHz-digit
-digit_4         equ  0x44       ; usually the 10-kHz-digit
-digit_5         equ  0x45       ; usually the 1-kHz-digit
-digit_6         equ  0x46       ; usually the 100-Hz-digit
-digit_7         equ  0x47       ; usually the 10-Hz-digit
-digit_8         equ  0x48       ; usually the 1-Hz-digit
-digit_9         equ  0x49       ; must contain a blank character (or trailing zero)
+display0        equ  0x3f       ; display #0 data
+display1        equ  0x40       ; display #1 data
+display2        equ  0x41       ; display #2 data
+display3        equ  0x42       ; display #3 data
+display4        equ  0x43       ; display #4 data
 
-display0        equ  0x4A       ; display #0 data
-display1        equ  0x4B       ; display #1 data
-display2        equ  0x4C       ; display #2 data
-display3        equ  0x4D       ; display #3 data
-display4        equ  0x4E       ; display #4 data
+disp_index      equ  0x44       ; index of the enabled display (0 to 4 for 5-digit display)
+disp_timer      equ  0x45       ; display multiplex timer (5 bits)
 
-disp_index      equ  0x4F       ; index of the enabled display (0 to 4 for 5-digit display)
-disp_timer      equ  0x50       ; display multiplex timer (5 bits)
+adjust_shifts   equ  0x46       ; count of 'left shifts' to compensate prescaler+gate time
 
-adjust_shifts   equ  0x51       ; count of 'left shifts' to compensate prescaler+gate time
+blinker         equ  0x47       ; prescaler for the flashing 1 MHz-dot
 
-blinker         equ  0x52       ; prescaler for the flashing 1 MHz-dot
-
-period_waste    equ  0x53       ; stores the number of cycle*4 to waste to make up the correct total
+period_waste    equ  0x48       ; stores the number of cycle*4 to waste to make up the correct total
                                 ; ... number of instructions in the CountPulses loop
-pcnt            equ  0x54       ; number of periods measured
-period_hi       equ  0x55       ; accumulated period in 20us increments (high byte)
-period_lo       equ  0x56       ; ... low byte
-pdiv_mh         equ  0x57       ; used to store the final division result (bits 16..23)
-pdiv_ml         equ  0x58       ; ... bits 8..15
-pdiv_lo         equ  0x59       ; ... bits 0..7
-options         equ  0x5A       ; persistent options, stored in EEPROM
-                                ; 7 6 5 4 3 2 1 0
-                                ; - - - - - - x 1    = EVENT: count events, period measuring off
-                                ; - - - - - - 1 x    = MILLI: switch to mHz resolution below 61 Hz
-#define EVENT options, 0        ; 0 = measure frequency, 1 = count events
-#define MILLI options, 1        ; 0 = resolution 10 mHz, 1 = resolution 1 mHz
-#define EVENT_MASK  b'00000001'
-#define MILLI_MASK  b'00000010'
-#define OPTION_MASK b'00000011' ; mask device options
-modebits        equ  0x5B       ; special device modes
+pcnt            equ  0x49       ; number of periods measured
+period_hi       equ  0x4a       ; accumulated period in 20us increments (high byte)
+period_lo       equ  0x4b       ; ... low byte
+pdiv_mh         equ  0x4c       ; used to store the final division result (bits 16..23)
+pdiv_ml         equ  0x4d       ; ... bits 8..15
+pdiv_lo         equ  0x4e       ; ... bits 0..7
+
+modebits        equ  0x4f       ; special device modes
                                 ; 7 6 5 4 3 2 1 0
                                 ; 0 x x x - - - -    = period measuring off (normal freq disp)
                                 ; 1 0 0 0 - - - -    = PMODE: measure/show 10mHz
@@ -413,6 +408,23 @@ modebits        equ  0x5B       ; special device modes
 #define FZOOM_MASK b'00010000'
 #define MODES_MASK b'11110000'  ; all possible special modes
 
+options         equ  0x50       ; persistent options, stored in EEPROM
+                                ; 7 6 5 4 3 2 1 0
+                                ; - - - - - - x 1    = EVENT: count events, period measuring off
+                                ; - - - - - - 1 x    = MILLI: switch to mHz resolution below 61 Hz
+#define EVENT options, 0        ; 0 = measure frequency, 1 = count events
+#define MILLI options, 1        ; 0 = resolution 10 mHz, 1 = resolution 1 mHz
+#define EVENT_MASK  b'00000001'
+#define MILLI_MASK  b'00000010'
+#define OPTION_MASK b'00000011' ; mask device options
+
+
+
+;**************************************************************************
+;                                                                         *
+; EEPROM content                                                          *
+;                                                                         *
+;**************************************************************************
 
 #define EEPROM_ADR_OPTIONS 0    ; EEPROM location for "options" (flags)
 
@@ -427,7 +439,7 @@ modebits        equ  0x5B       ; special device modes
 ;                                                                         *
 ;**************************************************************************
 
-  ORG   0x000                   ; processor reset vector
+  ORG   0x0000                  ; processor reset vector
         goto    MainInit        ; go to beginning of program
 ; (begin of ROM is too precious to waste for ordinary code, see below...)
 
