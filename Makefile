@@ -6,6 +6,7 @@ PART = PIC16F628A
 
 # use PICkit2 programmer: (implicite erase), program (-m), and (implicite verify)
 PROGRAMMER = pk2cmd -p$(PART) -m -j -f
+VERIFY = pk2cmd -p$(PART) -y -j -f
 
 # use ArdPicProg programmer, program and verify
 # PROGRAMMER = ardpicprog --erase --burn -i
@@ -41,3 +42,8 @@ flash: $(TARGET).hex
 .PHONY: reflash
 reflash: $(TARGET).hex
 	$(PROGRAMMER) $<
+
+# verify
+.PHONY: verify
+verify: $(TARGET).hex
+	$(VERIFY) $<

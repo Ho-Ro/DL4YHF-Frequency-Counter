@@ -109,7 +109,7 @@
 
  #DEFINE DEBUG 0        ; DEBUG=1 for simulation, DEBUG=0 for real hardware
 
- #DEFINE VERSION 0x1000 ; Version 1.0.00 store in IDLOCS
+ #DEFINE VERSION 0x1001 ; Version 1.0.01 store in IDLOCS
 
 ;**************************************************************************
 ;                                                                         *
@@ -631,17 +631,17 @@ ENDIF
         andwf   options, f
         clrf    bTemp           ; clear button press marker
 switch_mode:
+        btfsc   PUSH_BUTTON     ; check the switch
+        goto    save_mode       ; not pressed: save and go ...
+        bsf     bTemp, 0        ; remenber the pressed state
+        movlw   EVENT_MASK      ; pressed: switch to next setting
+        xorwf   options, f      ; change mode
         call    ShowMode
         movlw   (LAMPTEST_LOOPS)>>8     ; high byte for 0.5 second lamp test
         movwf   gatecnt_hi
         movlw   (LAMPTEST_LOOPS)&0xff   ; low byte for 0.5 second lamp test
         movwf   gatecnt_lo
         call    CountPulses
-        btfsc   PUSH_BUTTON     ; check the switch
-        goto    save_mode       ; not pressed: save and go ...
-        bsf     bTemp, 0        ; remenber the pressed state
-        movlw   EVENT_MASK      ; pressed: next setting
-        xorwf   options, f      ; change mode
         goto    switch_mode
 save_mode:
         btfss   bTemp, 0        ; button was not pressed and released
