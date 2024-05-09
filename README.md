@@ -24,6 +24,10 @@ under his [MIT license](https://github.com/tardate/LittleArduinoProjects/blob/ma
 
 ![Crystal Oscillator Frequency Counter Tester Schematics](https://github.com/tardate/LittleArduinoProjects/blob/master/Equipment/FrequencyCounterKit/assets/FrequencyCounterKit_schematic.jpg?raw=true)
 
+This counter is available also as a *yellow* variant with the same features as the *red* counter.
+
+![DL4YHF yellow variant](https://www.mikrocontroller.net/attachment/633821/DSCI0070.JPG)
+
 Another [green variant](https://chinese-electronics-products-tested.blogspot.com/p/50-mhz-frequency-counter-kit-tested.html)
 labelled *"DIY Kit 1Hz-75MHz Frequency Counter 7V-9V 50mA"*, consisting of two PCBs (display and electronics)
 offers a BNC connector and a sensitive preamplifier instead of the less useful quartz tester.
@@ -135,10 +139,9 @@ You should mount the capacitor 180° rotated to have top connected to GND.
 ![DL4YHF capacitor mod](HW/DL4YHF_capacitor_mod.jpg)
 
 #### Switching between frequency and event counter mode
-When switching on, the current working mode is briefly displayed, either `FrEQ` or `Count`.
-If you press and hold the button while switching on, the display alternates between these two modes.
-If the button is released during the desired mode, this mode is permanently saved in the EEPROM
-and the device operates either as a frequency or event counter, even after a restart
+If you press and hold the button while switching on, the display alternates between the two modes
+`FrEQ` and `Count`. If the button is released during the desired mode, this mode is permanently saved
+in the EEPROM and the device operates either as a frequency or event counter, even after a restart
 
 ## License
 The work (except [Wolfgang's original code](DL4YHF/counter.asm) that is in the public domain) is released under GPL v3.
